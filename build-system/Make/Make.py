@@ -543,14 +543,18 @@ def resolve_configuration(base_path, bazel_command_line: BazelCommandLine, argum
             if file_name.endswith('.mobileprovision'):
                 provisioning_profile_files.append(file_name)
     elif arguments.disableProvisioningProfiles:
-        # Copy a real provisioning profile so Bazel can validate it, even though select will choose None
-        # This allows Bazel to check all select branches without errors
+        # Copy all provisioning profiles so Bazel can validate select() branches,
+        # even though the disableProvisioningProfilesSetting select will choose None
         if arguments.codesigningInformationPath:
-            source_profile = os.path.join(arguments.codesigningInformationPath, 'profiles', 'Telegram.mobileprovision')
-            if os.path.exists(source_profile):
-                dest_profile = os.path.join(provisioning_path, 'Telegram.mobileprovision')
-                shutil.copyfile(source_profile, dest_profile)
-                provisioning_profile_files.append('Telegram.mobileprovision')
+            source_profiles_dir = os.path.join(arguments.codesigningInformationPath, 'profiles')
+            if os.path.isdir(source_profiles_dir):
+                for file_name in os.listdir(source_profiles_dir):
+                    if file_name.endswith('.mobileprovision'):
+                        shutil.copyfile(
+                            os.path.join(source_profiles_dir, file_name),
+                            os.path.join(provisioning_path, file_name)
+                        )
+                        provisioning_profile_files.append(file_name)
 
     with open(provisioning_path + '/BUILD', 'w+') as file:
         file.write('exports_files([\n')
