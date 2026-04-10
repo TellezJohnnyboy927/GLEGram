@@ -26,6 +26,42 @@ jobs:
           distribution: temurin
           java-version: '21'
 
+      - name: Initialize Bazel rule submodules
+        # build-system/bazel-rules/* are referenced via local_path_override in MODULE.bazel
+        # but were never committed as gitlinks in this repository.  Clone them manually
+        # at the exact commits used by the upstream Swiftgram project.
+        run: |
+          mkdir -p build-system/bazel-rules
+
+          _clone_at() {
+            local dir="$1" url="$2" sha="$3"
+            mkdir -p "$dir"
+            git -C "$dir" init -q
+            git -C "$dir" remote add origin "$url"
+            git -C "$dir" fetch --depth=1 -q origin "$sha"
+            git -C "$dir" checkout -q FETCH_HEAD
+          }
+
+          _clone_at build-system/bazel-rules/rules_xcodeproj \
+            https://github.com/MobileNativeFoundation/rules_xcodeproj.git \
+            79f26ec1315531a8459fe95934440cb3ca3c16df
+
+          _clone_at build-system/bazel-rules/rules_apple \
+            https://github.com/ali-fareed/rules_apple.git \
+            39cc2529241335d20afcb6700c587d064e7a2870
+
+          _clone_at build-system/bazel-rules/rules_swift \
+            https://github.com/bazelbuild/rules_swift.git \
+            2b9261134a123ad83f8b1d2dc7fc69ae83fe7172
+
+          _clone_at build-system/bazel-rules/apple_support \
+            https://github.com/bazelbuild/apple_support.git \
+            7967e453d1f54963935a1ae06808e1c64420bfb1
+
+          _clone_at build-system/bazel-rules/sourcekit-bazel-bsp \
+            https://github.com/spotify/sourcekit-bazel-bsp.git \
+            e2e532ab9d9296343ce77c93286dd7d472947157
+
       - name: Set Xcode version
         run: |
           XCODE_VERSION=$(python3 -c 'import json; d=json.load(open("versions.json")); print(d["xcode"])')
