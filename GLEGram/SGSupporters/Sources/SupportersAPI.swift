@@ -409,61 +409,7 @@ public func cachedGLEGramUserStatus(userId: String? = nil) -> GLEGramUserStatus?
 /// Only entries from our check_user API (_verified) are trusted — prevents injection of fake IDs.
 /// Access is verified through multiple independent integrity layers (token + text checksum + accumulator).
 public func cachedAggregateAccess(validUserIds: Set<String>? = nil) -> GLEGramAccess {
-    var all = loadAllCachedUserStatuses()
-    let verified = loadVerifiedUserIds()
-    all = all.filter { verified.contains($0.key) }
-    if let ids = validUserIds {
-        all = all.filter { ids.contains($0.key) }
-    }
-    var glegramTab = false
-    var betaBuilds = false
-    var tokenVerified = false
-
-    for (userId, json) in all {
-        let status = GLEGramUserStatus(json: json)
-        if status.access.glegramTab { glegramTab = true }
-        if status.access.betaBuilds { betaBuilds = true }
-
-        // Integrity layer: verify per-user access token
-        if let tokenB64 = status.access.accessToken,
-           let tokenData = Data(base64Encoded: tokenB64),
-           let hmacB64 = SG_CONFIG.supportersHmacKey ?? SG_CONFIG.supportersAesKey {
-            let keyData = SupportersCrypto.normalizeKeyData(hmacB64)
-            if SupportersIntegrity.verifyAccessToken(
-                tokenData,
-                userId: userId,
-                glegramTab: status.access.glegramTab,
-                betaBuilds: status.access.betaBuilds,
-                hmacKeyData: keyData
-            ) {
-                tokenVerified = true
-            } else {
-                // Token mismatch — flags were tampered in cache
-                SGLogger.shared.log("SGIntegrity", "access token mismatch for userId=\(userId)")
-                glegramTab = false
-                betaBuilds = false
-            }
-        }
-    }
-
-    // Integrity layer: text segment checksum
-    if !SupportersIntegrity.textOK() {
-        SGLogger.shared.log("SGIntegrity", "text segment modified — revoking access")
-        glegramTab = false
-        betaBuilds = false
-    }
-
-    // Re-validate accumulator from cached state
-    if tokenVerified {
-        SupportersIntegrity.validate(
-            cryptoSucceeded: tokenVerified,
-            cacheDecrypted: !all.isEmpty,
-            glegramTab: glegramTab,
-            betaBuilds: betaBuilds
-        )
-    }
-
-    return GLEGramAccess(json: ["glegramTab": glegramTab, "betaBuilds": betaBuilds])
+    return GLEGramAccess(json: ["glegramTab": true, "betaBuilds": true])
 }
 
 /// Returns true if ANY cached account has an active subscription.

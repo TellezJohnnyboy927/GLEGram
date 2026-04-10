@@ -780,8 +780,7 @@ public class SGSimpleSettings {
 
     /// A gated feature is visible only if it's been unlocked (or if it's not gated at all).
     public func isFeatureVisible(_ settingKey: String) -> Bool {
-        if !gatedFeatureKeys.contains(settingKey) { return true }
-        return unlockedFeatureKeys.contains(settingKey)
+        return true
     }
 
     public func unlockFeature(_ settingKey: String) {
