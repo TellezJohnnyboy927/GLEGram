@@ -1,109 +1,187 @@
-name: CI
+name: Build GLEGram
 
 on:
-  # push:
-  #   branches: [ master ]
-
   workflow_dispatch:
+    inputs:
+      build_number:
+        description: 'Build number override (leave empty for auto from commit count)'
+        required: false
+        default: ''
 
 jobs:
   build:
-    runs-on: macos-13
+    runs-on: macos-15
 
     steps:
-      - uses: actions/checkout@v2
+      - name: Checkout
+        uses: actions/checkout@v4
         with:
-          submodules: 'recursive'
-          fetch-depth: '0'
+          submodules: recursive
+          fetch-depth: 0
 
-      - name: Set active Xcode path
-        run: |
-          XCODE_VERSION=$(cat versions.json | python3 -c 'import json,sys;obj=json.load(sys.stdin);print(obj["xcode"]);')
-          sudo xcode-select -s /Applications/Xcode_$XCODE_VERSION.app/Contents/Developer
+      # Bazel with embedded JDK 24 crashes on macOS 15+ — use system JDK 21.
+      - name: Set up Java 21
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '21'
 
-      - name: Create canonical source directory
+      - name: Set Xcode version
         run: |
-          set -x
+          XCODE_VERSION=$(python3 -c 'import json; d=json.load(open("versions.json")); print(d["xcode"])')
+          XCODE_PATH="/Applications/Xcode_${XCODE_VERSION}.app/Contents/Developer"
+          if [ -d "$XCODE_PATH" ]; then
+            sudo xcode-select -s "$XCODE_PATH"
+            echo "Activated Xcode ${XCODE_VERSION}"
+          else
+            echo "Xcode ${XCODE_VERSION} not found at $XCODE_PATH, using default: $(xcode-select -p)"
+          fi
+          xcodebuild -version
+
+      - name: Validate required secrets
+        run: |
+          if [ -z "${{ secrets.API_ID }}" ] || [ -z "${{ secrets.API_HASH }}" ]; then
+            echo "::error::Required secrets API_ID and API_HASH are not set."
+            echo "  Go to Settings → Secrets → Actions and add:"
+            echo "  - API_ID   (from https://my.telegram.org)"
+            echo "  - API_HASH (from https://my.telegram.org)"
+            exit 1
+          fi
+
+      - name: Create build configuration
+        env:
+          API_ID: ${{ secrets.API_ID }}
+          API_HASH: ${{ secrets.API_HASH }}
+          BUNDLE_ID: ${{ secrets.BUNDLE_ID }}
+          TEAM_ID: ${{ secrets.TEAM_ID }}
+        run: |
+          python3 - <<'EOF'
+          import json, os
+          cfg = {
+              "bundle_id": os.environ.get("BUNDLE_ID") or "com.example.GLEGram",
+              "api_id": os.environ["API_ID"],
+              "api_hash": os.environ["API_HASH"],
+              "team_id": os.environ.get("TEAM_ID") or "FAKETEAMID",
+              "app_center_id": "0",
+              "is_internal_build": "false",
+              "is_appstore_build": "false",
+              "appstore_id": "0",
+              "app_specific_url_scheme": "tg",
+              "premium_iap_product_id": "",
+              "enable_siri": False,
+              "enable_icloud": False,
+              "sg_config": ""
+          }
+          path = "build-system/ci-configuration.json"
+          with open(path, "w") as f:
+              json.dump(cfg, f, indent="\t")
+          print(f"Created {path} (bundle_id={cfg['bundle_id']})")
+          EOF
+
+      - name: Copy sources to canonical path
+        # Source paths are embedded in the binary; a stable path makes builds reproducible.
+        run: |
           sudo mkdir -p /Users/Shared
-          cp -R $GITHUB_WORKSPACE /Users/Shared/
-          mv /Users/Shared/$(basename $GITHUB_WORKSPACE) /Users/Shared/telegram-ios
+          cp -R "$GITHUB_WORKSPACE" /Users/Shared/
+          mv "/Users/Shared/$(basename "$GITHUB_WORKSPACE")" /Users/Shared/telegram-ios
 
-      - name: Build the App
+      - name: Cache Bazel output
+        uses: actions/cache@v4
+        with:
+          path: ~/telegram-bazel-cache
+          key: bazel-${{ runner.os }}-${{ hashFiles('WORKSPACE', 'variables.bzl') }}
+          restore-keys: bazel-${{ runner.os }}-
+
+      - name: Compute build number and app version
+        id: meta
         run: |
-          set -x
-
-          # source code paths are included in the final binary, so we need to make them stable across builds
           SOURCE_DIR=/Users/Shared/telegram-ios
+          if [ -n "${{ github.event.inputs.build_number }}" ]; then
+            BUILD_NUMBER="${{ github.event.inputs.build_number }}"
+          else
+            OFFSET=$(cat "$SOURCE_DIR/build_number_offset" 2>/dev/null || echo 0)
+            COMMIT_COUNT=$(git -C "$SOURCE_DIR" rev-list --count HEAD)
+            BUILD_NUMBER=$((COMMIT_COUNT + OFFSET))
+          fi
+          APP_VERSION=$(python3 -c 'import json; d=json.load(open("/Users/Shared/telegram-ios/versions.json")); print(d["app"])')
+          echo "BUILD_NUMBER=$BUILD_NUMBER" >> "$GITHUB_ENV"
+          echo "APP_VERSION=$APP_VERSION" >> "$GITHUB_ENV"
+          echo "build_number=$BUILD_NUMBER" >> "$GITHUB_OUTPUT"
+          echo "GLEGram $APP_VERSION build $BUILD_NUMBER"
 
-          # use canonical bazel root
-          BAZEL_USER_ROOT="/private/var/tmp/_bazel_containerhost"
-
-          cd $SOURCE_DIR
-
-          BUILD_NUMBER_OFFSET="$(cat build_number_offset)"
-
-          export APP_VERSION=$(cat versions.json | python3 -c 'import json,sys;obj=json.load(sys.stdin);print(obj["app"]);')
-          export COMMIT_COUNT=$(git rev-list --count HEAD)
-          export COMMIT_COUNT="$(($COMMIT_COUNT+$BUILD_NUMBER_OFFSET))"
-          export BUILD_NUMBER="$COMMIT_COUNT"
-          echo "BUILD_NUMBER=$(echo $BUILD_NUMBER)" >> $GITHUB_ENV
-          echo "APP_VERSION=$(echo $APP_VERSION)" >> $GITHUB_ENV
-
+      - name: Import fake certificates
+        run: |
+          cd /Users/Shared/telegram-ios
           python3 build-system/Make/ImportCertificates.py --path build-system/fake-codesigning/certs
+
+      - name: Build GLEGram (release_arm64)
+        run: |
+          set -euo pipefail
+          SOURCE_DIR=/Users/Shared/telegram-ios
+          BAZEL_USER_ROOT="/private/var/tmp/_bazel_containerhost"
+          CACHE_DIR="$HOME/telegram-bazel-cache"
+          cd "$SOURCE_DIR"
           python3 -u build-system/Make/Make.py \
+            --cacheDir="$CACHE_DIR" \
             --bazelUserRoot="$BAZEL_USER_ROOT" \
             build \
-            --configurationPath="build-system/appstore-configuration.json" \
+            --configurationPath="build-system/ci-configuration.json" \
             --codesigningInformationPath=build-system/fake-codesigning \
             --configuration=release_arm64 \
-            --buildNumber="$BUILD_NUMBER"
+            --buildNumber="$BUILD_NUMBER" \
+            --target GLEGram
 
-          # collect ipa
+      - name: Collect artifacts
+        run: |
+          SOURCE_DIR=/Users/Shared/telegram-ios
+          cd "$SOURCE_DIR"
           OUTPUT_PATH="build/artifacts"
           rm -rf "$OUTPUT_PATH"
           mkdir -p "$OUTPUT_PATH"
-          for f in bazel-out/applebin_ios-ios_arm*-opt-ST-*/bin/Telegram/Telegram.ipa; do
-            cp "$f" $OUTPUT_PATH/
-          done
 
-          # collect dsym
+          # IPA — try GLEGram.ipa first, then any .ipa
+          IPA_FOUND=0
+          for f in bazel-out/applebin_ios-ios_arm*-opt-ST-*/bin/Telegram/GLEGram.ipa; do
+            if [ -f "$f" ]; then cp "$f" "$OUTPUT_PATH/GLEGram.ipa"; IPA_FOUND=1; break; fi
+          done
+          if [ "$IPA_FOUND" = "0" ]; then
+            for f in bazel-out/applebin_ios-ios_arm*-opt-ST-*/bin/Telegram/*.ipa; do
+              if [ -f "$f" ]; then cp "$f" "$OUTPUT_PATH/GLEGram.ipa"; IPA_FOUND=1; break; fi
+            done
+          fi
+          [ "$IPA_FOUND" = "0" ] && echo "::error::No IPA found in bazel-out" && exit 1
+
+          # dSYMs
           mkdir -p build/DSYMs
           for f in bazel-out/applebin_ios-ios_arm*-opt-ST-*/bin/Telegram/*.dSYM; do
-            cp -R "$f" build/DSYMs/
+            [ -d "$f" ] && cp -R "$f" build/DSYMs/
           done
-          zip -r "./$OUTPUT_PATH/Telegram.DSYMs.zip" build/DSYMs 1>/dev/null
+          zip -r "$OUTPUT_PATH/GLEGram.DSYMs.zip" build/DSYMs 1>/dev/null || true
 
-      - name: Create Release
-        id: create_release
-        uses: actions/create-release@v1
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          echo "Artifacts:"
+          ls -lh "$OUTPUT_PATH/"
+
+      - name: Upload IPA as workflow artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: GLEGram-${{ env.BUILD_NUMBER }}
+          path: /Users/Shared/telegram-ios/build/artifacts/GLEGram.ipa
+          retention-days: 30
+
+      - name: Create GitHub Release
+        uses: softprops/action-gh-release@v2
         with:
           tag_name: build-${{ env.BUILD_NUMBER }}
-          release_name: Telegram ${{ env.APP_VERSION }} (${{ env.BUILD_NUMBER }})
+          name: GLEGram ${{ env.APP_VERSION }} (${{ env.BUILD_NUMBER }})
           body: |
-            An unsigned build of Telegram for iOS ${{ env.APP_VERSION }} (${{ env.BUILD_NUMBER }})
+            Unsigned GLEGram ${{ env.APP_VERSION }} build ${{ env.BUILD_NUMBER }}
+
+            > ⚠️ **Unsigned IPA** — built with fake codesigning certificates.
+            > You must resign it with your own developer certificate before installing.
           draft: false
           prerelease: false
-
-      - name: Upload Release IPA
-        id: upload-release-ipa 
-        uses: actions/upload-release-asset@v1
+          files: |
+            /Users/Shared/telegram-ios/build/artifacts/GLEGram.ipa
+            /Users/Shared/telegram-ios/build/artifacts/GLEGram.DSYMs.zip
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-        with:
-          upload_url: ${{ steps.create_release.outputs.upload_url }}
-          asset_path: /Users/Shared/telegram-ios/build/artifacts/Telegram.ipa
-          asset_name: Telegram.ipa
-          asset_content_type: application/zip
-
-      - name: Upload Release DSYM
-        id: upload-release-dsym 
-        uses: actions/upload-release-asset@v1
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-        with:
-          upload_url: ${{ steps.create_release.outputs.upload_url }}
-          asset_path: /Users/Shared/telegram-ios/build/artifacts/Telegram.DSYMs.zip
-          asset_name: Telegram.DSYMs.zip
-          asset_content_type: application/zip
