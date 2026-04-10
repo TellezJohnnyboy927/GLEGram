@@ -1,5 +1,6 @@
 # Build
 bazel-*
+!build-system/bazel-utils/
 build/
 .build/
 *.ipa
