@@ -554,7 +554,24 @@ private func extractAccountManagerState(records: AccountRecordsView<TelegramAcco
         
         let baseAppBundleId = Bundle.main.bundleIdentifier!
         let appGroupName = "group.\(baseAppBundleId)"
-        let maybeAppGroupUrl = FileManager.default.containerURL(forSecurityApplicationGroupIdentifier: appGroupName)
+        // MARK: - MQGram
+        // The App Group entitlement is only granted by a paid Apple Developer
+        // account / TrollStore. When the IPA is re-signed by Sideloadly /
+        // AltStore with a free Apple ID, `containerURL(...)` returns nil and
+        // upstream Telegram tries to show an "Error 2" alert before the
+        // window is visible, which produces a black-screen-on-launch.  Fall
+        // back to a directory inside the app's own sandbox so the main app
+        // can still start.  Production / TrollStore builds keep using the
+        // real App Group container because the lookup succeeds first.
+        var maybeAppGroupUrl: URL? = FileManager.default.containerURL(forSecurityApplicationGroupIdentifier: appGroupName)
+        if maybeAppGroupUrl == nil,
+           let docs = FileManager.default.urls(for: .documentDirectory, in: .userDomainMask).first {
+            let fallback = docs.deletingLastPathComponent().appendingPathComponent("AppGroup", isDirectory: true)
+            try? FileManager.default.createDirectory(at: fallback, withIntermediateDirectories: true)
+            maybeAppGroupUrl = fallback
+            print("[MQGram] App Group '\(appGroupName)' unavailable — using sandbox fallback at \(fallback.path)")
+        }
+        // MARK: - End MQGram
         
         let buildConfig = BuildConfig(baseAppBundleId: baseAppBundleId)
         self.buildConfig = buildConfig
