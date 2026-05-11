@@ -11,17 +11,17 @@ import SGAPIWebSettings
 import SGLogging
 import SGStrings
 import SGSimpleSettings
-// MARK: - GLEGram
+// MARK: - MQGram
 import SGConfig
 #if canImport(SGSupporters)
 import SGSupporters
 #endif
-// MARK: - End GLEGram
-// MARK: - GLEGram
+// MARK: - End MQGram
+// MARK: - MQGram
 #if canImport(SGDeletedMessages)
 import SGDeletedMessages
 #endif
-// MARK: - End GLEGram
+// MARK: - End MQGram
 import UIKit
 import SwiftSignalKit
 import Display
@@ -2119,13 +2119,13 @@ private func extractAccountManagerState(records: AccountRecordsView<TelegramAcco
         self.isActiveValue = true
         self.isActivePromise.set(true)
 
-        // MARK: - GLEGram - Process overdue ghost-delayed messages on becoming active
+        // MARK: - MQGram - Process overdue ghost-delayed messages on becoming active
         let _ = (self.sharedContextPromise.get()
             |> take(1)
             |> deliverOnMainQueue).start(next: { sharedContext in
                 sharedContext.sharedContext.processOverdueGhostDelayedMessagesForAllAccounts()
             })
-        // MARK: - End GLEGram
+        // MARK: - End MQGram
 
         self.resetBadge()
         

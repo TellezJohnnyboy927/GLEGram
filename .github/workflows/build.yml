@@ -1,12 +1,20 @@
-name: Build GLEGram
+name: Build MQGram
 
 on:
+  push:
+    branches: [main]
+    tags: ['v*', 'build-*']
+  pull_request:
+    branches: [main]
   workflow_dispatch:
     inputs:
       build_number:
         description: 'Build number override (leave empty for auto from commit count)'
         required: false
         default: ''
+
+permissions:
+  contents: write
 
 jobs:
   build:
@@ -94,7 +102,7 @@ jobs:
           python3 - <<'EOF'
           import json, os
           cfg = {
-              "bundle_id": os.environ.get("BUNDLE_ID") or "com.example.GLEGram",
+              "bundle_id": os.environ.get("BUNDLE_ID") or "com.example.MQGram",
               "api_id": os.environ["API_ID"],
               "api_hash": os.environ["API_HASH"],
               "team_id": os.environ.get("TEAM_ID") or "FAKETEAMID",
@@ -143,14 +151,14 @@ jobs:
           echo "BUILD_NUMBER=$BUILD_NUMBER" >> "$GITHUB_ENV"
           echo "APP_VERSION=$APP_VERSION" >> "$GITHUB_ENV"
           echo "build_number=$BUILD_NUMBER" >> "$GITHUB_OUTPUT"
-          echo "GLEGram $APP_VERSION build $BUILD_NUMBER"
+          echo "MQGram $APP_VERSION build $BUILD_NUMBER"
 
       - name: Import fake certificates
         run: |
           cd /Users/Shared/telegram-ios
           python3 build-system/Make/ImportCertificates.py --path build-system/fake-codesigning/certs
 
-      - name: Build GLEGram (release_arm64)
+      - name: Build MQGram (release_arm64)
         run: |
           set -euo pipefail
           SOURCE_DIR=/Users/Shared/telegram-ios
@@ -166,7 +174,7 @@ jobs:
             --disableProvisioningProfiles \
             --configuration=release_arm64 \
             --buildNumber="$BUILD_NUMBER" \
-            --target GLEGram
+            --target MQGram
 
       - name: Collect artifacts
         run: |
@@ -176,14 +184,14 @@ jobs:
           rm -rf "$OUTPUT_PATH"
           mkdir -p "$OUTPUT_PATH"
 
-          # IPA — try GLEGram.ipa first, then any .ipa
+          # IPA — try MQGram.ipa first, then any .ipa
           IPA_FOUND=0
-          for f in bazel-out/applebin_ios-ios_arm*-opt-ST-*/bin/Telegram/GLEGram.ipa; do
-            if [ -f "$f" ]; then cp "$f" "$OUTPUT_PATH/GLEGram.ipa"; IPA_FOUND=1; break; fi
+          for f in bazel-out/applebin_ios-ios_arm*-opt-ST-*/bin/Telegram/MQGram.ipa; do
+            if [ -f "$f" ]; then cp "$f" "$OUTPUT_PATH/MQGram.ipa"; IPA_FOUND=1; break; fi
           done
           if [ "$IPA_FOUND" = "0" ]; then
             for f in bazel-out/applebin_ios-ios_arm*-opt-ST-*/bin/Telegram/*.ipa; do
-              if [ -f "$f" ]; then cp "$f" "$OUTPUT_PATH/GLEGram.ipa"; IPA_FOUND=1; break; fi
+              if [ -f "$f" ]; then cp "$f" "$OUTPUT_PATH/MQGram.ipa"; IPA_FOUND=1; break; fi
             done
           fi
           [ "$IPA_FOUND" = "0" ] && echo "::error::No IPA found in bazel-out" && exit 1
@@ -193,7 +201,7 @@ jobs:
           for f in bazel-out/applebin_ios-ios_arm*-opt-ST-*/bin/Telegram/*.dSYM; do
             [ -d "$f" ] && cp -R "$f" build/DSYMs/
           done
-          zip -r "$OUTPUT_PATH/GLEGram.DSYMs.zip" build/DSYMs 1>/dev/null || true
+          zip -r "$OUTPUT_PATH/MQGram.DSYMs.zip" build/DSYMs 1>/dev/null || true
 
           echo "Artifacts:"
           ls -lh "$OUTPUT_PATH/"
@@ -201,24 +209,25 @@ jobs:
       - name: Upload IPA as workflow artifact
         uses: actions/upload-artifact@v4
         with:
-          name: GLEGram-${{ env.BUILD_NUMBER }}
-          path: /Users/Shared/telegram-ios/build/artifacts/GLEGram.ipa
+          name: MQGram-${{ env.BUILD_NUMBER }}
+          path: /Users/Shared/telegram-ios/build/artifacts/MQGram.ipa
           retention-days: 30
 
       - name: Create GitHub Release
+        if: github.event_name != 'pull_request'
         uses: softprops/action-gh-release@v2
         with:
           tag_name: build-${{ env.BUILD_NUMBER }}
-          name: GLEGram ${{ env.APP_VERSION }} (${{ env.BUILD_NUMBER }})
+          name: MQGram ${{ env.APP_VERSION }} (${{ env.BUILD_NUMBER }})
           body: |
-            Unsigned GLEGram ${{ env.APP_VERSION }} build ${{ env.BUILD_NUMBER }}
+            Unsigned MQGram ${{ env.APP_VERSION }} build ${{ env.BUILD_NUMBER }}
 
             > ⚠️ **Unsigned IPA** — built with fake codesigning certificates.
             > You must resign it with your own developer certificate before installing.
           draft: false
           prerelease: false
           files: |
-            /Users/Shared/telegram-ios/build/artifacts/GLEGram.ipa
-            /Users/Shared/telegram-ios/build/artifacts/GLEGram.DSYMs.zip
+            /Users/Shared/telegram-ios/build/artifacts/MQGram.ipa
+            /Users/Shared/telegram-ios/build/artifacts/MQGram.DSYMs.zip
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}

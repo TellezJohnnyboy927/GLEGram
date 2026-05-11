@@ -1408,7 +1408,7 @@ func contextMenuForChatPresentationInterfaceState(chatPresentationInterfaceState
             }
         }
         
-        // MARK: - GLEGram - Allow saving protected content and self-destructing messages if enabled
+        // MARK: - MQGram - Allow saving protected content and self-destructing messages if enabled
         let canSaveSecretMedia: Bool
         #if canImport(SGSimpleSettings)
         canSaveSecretMedia = SGSimpleSettings.shared.enableSavingProtectedContent || SGSimpleSettings.shared.enableSavingSelfDestructingMessages

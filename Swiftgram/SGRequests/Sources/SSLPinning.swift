@@ -10,7 +10,7 @@ public final class SSLPinningDelegate: NSObject, URLSessionDelegate {
     private let pinnedHashes: Set<String>
 
     /// - Parameters:
-    ///   - host: Expected host (e.g. "glegram.site"). Must match the request's host.
+    ///   - host: Expected host (e.g. "mqgram.site"). Must match the request's host.
     ///   - pinnedHashes: Set of base64-encoded SHA256 hashes of the server certificate(s).
     ///     Generate: `openssl s_client -servername HOST -connect HOST:443 </dev/null 2>/dev/null | openssl x509 -outform DER | openssl dgst -sha256 -binary | base64`
     public init(host: String, pinnedHashes: [String]) {

@@ -49,10 +49,10 @@ extension PeerInfoScreenNode {
         switch section {
         case .swiftgram:
             self.controller?.push(sgSettingsController(context: self.context))
-        // MARK: - GLEGram
-        case .gleGram:
-            self.controller?.push(gleGramSettingsController(context: self.context))
-        // MARK: - End GLEGram
+        // MARK: - MQGram
+        case .mqGram:
+            self.controller?.push(mqGramSettingsController(context: self.context))
+        // MARK: - End MQGram
         case .swiftgramPro:
             if self.context.sharedContext.immediateSGStatus.status > 1 {
                 self.controller?.push(self.context.sharedContext.makeSGProController(context: self.context))

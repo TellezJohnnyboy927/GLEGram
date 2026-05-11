@@ -242,7 +242,7 @@ public extension Peer {
     }
     
     var isCopyProtectionEnabled: Bool {
-        // MARK: - GLEGram - Allow saving protected content if enabled
+        // MARK: - MQGram - Allow saving protected content if enabled
         #if canImport(SGSimpleSettings)
         if SGSimpleSettings.shared.enableSavingProtectedContent {
             return false

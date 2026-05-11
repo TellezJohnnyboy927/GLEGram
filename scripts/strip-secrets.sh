@@ -48,14 +48,14 @@ SWIFT
 echo "  Stripped: SGConfig"
 
 # 1.5 SupportersCrypto — remove HMAC salt
-sed -i '' 's/private let HMAC_SALT = .*/private let HMAC_SALT = "YOUR_HMAC_SALT"/' GLEGram/SGSupporters/Sources/SupportersCrypto.swift 2>/dev/null
+sed -i '' 's/private let HMAC_SALT = .*/private let HMAC_SALT = "YOUR_HMAC_SALT"/' MQGram/SGSupporters/Sources/SupportersCrypto.swift 2>/dev/null
 echo "  Stripped: HMAC salt"
 
 # 2. Build configs — replace with templates
-for cfg in build-system/ipa-build-configuration.json build-system/glegram-appstore-configuration.json; do
+for cfg in build-system/ipa-build-configuration.json build-system/mqgram-appstore-configuration.json; do
     cat > "$cfg" << 'JSON'
 {
-	"bundle_id": "com.example.GLEGram",
+	"bundle_id": "com.example.MQGram",
 	"api_id": "YOUR_API_ID",
 	"api_hash": "YOUR_API_HASH",
 	"team_id": "YOUR_TEAM_ID",
