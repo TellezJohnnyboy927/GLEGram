@@ -188,23 +188,41 @@ jobs:
           rm -rf "$OUTPUT_PATH"
           mkdir -p "$OUTPUT_PATH"
 
-          # IPA — try MQGram.ipa first, then any .ipa
+          # IPA — prefer the bazel-bin symlink (always points to the current
+          # configuration), fall back to a recursive search under bazel-out.
           IPA_FOUND=0
-          for f in bazel-out/applebin_ios-ios_arm*-opt-ST-*/bin/Telegram/MQGram.ipa; do
-            if [ -f "$f" ]; then cp "$f" "$OUTPUT_PATH/MQGram.ipa"; IPA_FOUND=1; break; fi
-          done
-          if [ "$IPA_FOUND" = "0" ]; then
-            for f in bazel-out/applebin_ios-ios_arm*-opt-ST-*/bin/Telegram/*.ipa; do
-              if [ -f "$f" ]; then cp "$f" "$OUTPUT_PATH/MQGram.ipa"; IPA_FOUND=1; break; fi
-            done
+          if [ -f bazel-bin/Telegram/MQGram.ipa ]; then
+            cp -L bazel-bin/Telegram/MQGram.ipa "$OUTPUT_PATH/MQGram.ipa"
+            IPA_FOUND=1
+          else
+            CANDIDATE=$(find bazel-out -path '*/bin/Telegram/MQGram.ipa' -type f 2>/dev/null | head -n 1)
+            if [ -z "$CANDIDATE" ]; then
+              CANDIDATE=$(find bazel-out -path '*/bin/Telegram/*.ipa' -type f 2>/dev/null | head -n 1)
+            fi
+            if [ -n "$CANDIDATE" ]; then
+              cp "$CANDIDATE" "$OUTPUT_PATH/MQGram.ipa"
+              IPA_FOUND=1
+            fi
           fi
-          [ "$IPA_FOUND" = "0" ] && echo "::error::No IPA found in bazel-out" && exit 1
+          if [ "$IPA_FOUND" = "0" ]; then
+            echo "::error::No IPA found under bazel-bin or bazel-out"
+            echo "bazel-bin/Telegram listing:"
+            ls -la bazel-bin/Telegram 2>&1 || true
+            echo "find bazel-out:"
+            find bazel-out -name '*.ipa' 2>/dev/null | head -n 20 || true
+            exit 1
+          fi
 
-          # dSYMs
+          # dSYMs — collect everything Bazel generated alongside the IPA
           mkdir -p build/DSYMs
-          for f in bazel-out/applebin_ios-ios_arm*-opt-ST-*/bin/Telegram/*.dSYM; do
-            [ -d "$f" ] && cp -R "$f" build/DSYMs/
+          # First, anything next to the symlinked IPA target.
+          for f in bazel-bin/Telegram/*.dSYM bazel-bin/Telegram/*.framework.dSYM bazel-bin/Telegram/*.appex.dSYM; do
+            [ -e "$f" ] && cp -RL "$f" build/DSYMs/ 2>/dev/null || true
           done
+          # And anything else Bazel emitted under bazel-out.
+          while IFS= read -r f; do
+            [ -d "$f" ] && cp -R "$f" build/DSYMs/ 2>/dev/null || true
+          done < <(find bazel-out -path '*/bin/Telegram/*.dSYM' -prune 2>/dev/null)
           zip -r "$OUTPUT_PATH/MQGram.DSYMs.zip" build/DSYMs 1>/dev/null || true
 
           echo "Artifacts:"
