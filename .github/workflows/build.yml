@@ -228,11 +228,54 @@ jobs:
           echo "Artifacts:"
           ls -lh "$OUTPUT_PATH/"
 
-      - name: Upload IPA as workflow artifact
+      - name: Build sideload-friendly "lite" IPA
+        # Strips the embedded Telegram FZ-LLC provisioning profile, the watchOS
+        # companion app, all app extensions, and entitlement-gated Info.plist
+        # keys (UIBackgroundModes: voip/audio/remote-notification/location,
+        # NSUserActivityTypes). What's left is a single-binary iPhone app that
+        # a free Apple ID can re-sign cleanly via Sideloadly / AltStore on
+        # iOS 17+/18+ (where TrollStore is unavailable).
+        #
+        # Side effects: push notifications, Siri intents, share extension,
+        # widgets and broadcast-upload screen sharing are disabled in the lite
+        # build. The main app (chats, calls, AI tab, all GLEGram/MQGram
+        # features) keeps working.
+        run: |
+          set -euo pipefail
+          SOURCE_DIR=/Users/Shared/telegram-ios
+          ARTIFACTS_DIR="$SOURCE_DIR/build/artifacts"
+          STAGE="$SOURCE_DIR/build/lite-stage"
+          rm -rf "$STAGE" && mkdir -p "$STAGE"
+          cd "$STAGE"
+          unzip -q "$ARTIFACTS_DIR/MQGram.ipa"
+          rm -rf Payload/MQGram.app/PlugIns
+          rm -rf Payload/MQGram.app/Watch
+          rm -f  Payload/MQGram.app/embedded.mobileprovision
+          rm -rf Payload/MQGram.app/_CodeSignature
+          # Strip framework signatures too — Sideloadly re-signs them anyway.
+          find Payload/MQGram.app/Frameworks -name "_CodeSignature" -type d -prune -exec rm -rf {} +
+          python3 - <<'PY'
+          import plistlib
+          path = 'Payload/MQGram.app/Info.plist'
+          with open(path, 'rb') as f: p = plistlib.load(f)
+          modes = p.get('UIBackgroundModes', [])
+          keep = [m for m in modes if m in ('fetch', 'processing')]
+          if keep: p['UIBackgroundModes'] = keep
+          else:    p.pop('UIBackgroundModes', None)
+          p.pop('NSUserActivityTypes', None)
+          with open(path, 'wb') as f: plistlib.dump(p, f, fmt=plistlib.FMT_BINARY)
+          PY
+          zip -r -q -X "$ARTIFACTS_DIR/MQGram-lite.ipa" Payload SwiftSupport
+          echo "Lite artifact:"
+          ls -lh "$ARTIFACTS_DIR/MQGram-lite.ipa"
+
+      - name: Upload IPAs as workflow artifacts
         uses: actions/upload-artifact@v4
         with:
           name: MQGram-${{ env.BUILD_NUMBER }}
-          path: /Users/Shared/telegram-ios/build/artifacts/MQGram.ipa
+          path: |
+            /Users/Shared/telegram-ios/build/artifacts/MQGram.ipa
+            /Users/Shared/telegram-ios/build/artifacts/MQGram-lite.ipa
           retention-days: 30
 
       - name: Create GitHub Release
@@ -244,12 +287,24 @@ jobs:
           body: |
             Unsigned MQGram ${{ env.APP_VERSION }} build ${{ env.BUILD_NUMBER }}
 
+            **Two IPAs are attached:**
+            - `MQGram.ipa` — full build with all extensions (push, share,
+              widgets, Siri, broadcast upload, watch companion). Best for
+              **TrollStore** (iOS 14.0–16.6.1) or a paid Apple Developer
+              certificate that can grant Telegram's entitlements.
+            - `MQGram-lite.ipa` — stripped build with no extensions, no watch
+              app, no `UIBackgroundModes` for VoIP / push / audio. Use this
+              with **Sideloadly / AltStore / ESign** and a free Apple ID on
+              iOS 17+/18+ where TrollStore is unavailable. Push, Siri, widgets
+              and the share extension will be disabled in this variant.
+
             > ⚠️ **Unsigned IPA** — built with fake codesigning certificates.
             > You must resign it with your own developer certificate before installing.
           draft: false
           prerelease: false
           files: |
             /Users/Shared/telegram-ios/build/artifacts/MQGram.ipa
+            /Users/Shared/telegram-ios/build/artifacts/MQGram-lite.ipa
             /Users/Shared/telegram-ios/build/artifacts/MQGram.DSYMs.zip
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
