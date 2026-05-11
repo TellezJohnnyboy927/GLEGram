@@ -11,39 +11,56 @@ libs = [
     "opus",
 ]
 
-# MARK: MQGram — use prebuilt libopus instead of genrule (saves ~10 min)
-config_setting(
-    name = "ios_arm64",
-    values = {"cpu": "ios_arm64"},
-)
-
-config_setting(
-    name = "ios_sim_arm64",
-    values = {"cpu": "ios_sim_arm64"},
-)
-
-[genrule(
-    name = "copy_header_" + h,
-    srcs = ["prebuilt/include/" + h],
-    outs = ["Public/opus/" + h],
-    cmd = "cp $< $@",
-    visibility = ["//visibility:public"],
-) for h in headers]
-
 genrule(
     name = "opus_build",
-    srcs = select({
-        ":ios_arm64": ["prebuilt/arm64/libopus.a"],
-        ":ios_sim_arm64": ["prebuilt/sim_arm64/libopus.a"],
-        "//conditions:default": ["prebuilt/arm64/libopus.a"],
-    }),
-    outs = ["Public/opus/lib/libopus.a"],
-    cmd = "cp $< $@",
+    srcs = [
+        "build-opus-bazel.sh",
+        "opus-1.5.1.tar.gz",
+    ],
+    cmd_bash = 
+    """
+        set -ex
+
+        if [ "$(TARGET_CPU)" == "ios_armv7" ]; then
+            BUILD_ARCH="armv7"
+        elif [ "$(TARGET_CPU)" == "ios_arm64" ]; then
+            BUILD_ARCH="arm64"
+        elif [ "$(TARGET_CPU)" == "ios_sim_arm64" ]; then
+            BUILD_ARCH="sim_arm64"
+        elif [ "$(TARGET_CPU)" == "ios_x86_64" ]; then
+            BUILD_ARCH="x86_64"
+        elif [ "$(TARGET_CPU)" == "k8" ] || [ "$(TARGET_CPU)" == "x86_64" ]; then
+            BUILD_ARCH="linux_x86_64"
+        elif [ "$(TARGET_CPU)" == "aarch64" ] || [ "$(TARGET_CPU)" == "arm64" ]; then
+            BUILD_ARCH="linux_arm64"
+        else
+            echo "Unsupported architecture $(TARGET_CPU)"
+        fi
+
+        BUILD_DIR="$(RULEDIR)/build_$${BUILD_ARCH}"
+        rm -rf "$$BUILD_DIR"
+        mkdir -p "$$BUILD_DIR"
+
+        cp $(location :build-opus-bazel.sh) "$$BUILD_DIR/"
+        cp $(location :opus-1.5.1.tar.gz) "$$BUILD_DIR/"
+
+        mkdir -p "$$BUILD_DIR/Public/opus"
+
+        sh $$BUILD_DIR/build-opus-bazel.sh $$BUILD_ARCH "$$BUILD_DIR" opus-1.5.1.tar.gz
+    """ +
+    "\n".join([
+        "cp -f \"$$BUILD_DIR/built/include/opus/{}\" \"$(location Public/opus/{})\"".format(header, header) for header in headers
+    ]) +
+    "\n" +
+    "\n".join([
+        "cp -f \"$$BUILD_DIR/built/lib/lib{}.a\" \"$(location Public/opus/lib/lib{}.a)\"".format(lib, lib) for lib in libs
+    ]),
+    outs = ["Public/opus/" + x for x in headers] +
+           ["Public/opus/lib/lib{}.a".format(x) for x in libs],
     visibility = [
         "//visibility:public",
-    ],
+    ]
 )
-# MARK: End MQGram
 
 cc_library(
     name = "opus_lib",
