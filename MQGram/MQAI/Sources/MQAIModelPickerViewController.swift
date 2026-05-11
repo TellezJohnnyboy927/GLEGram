@@ -17,9 +17,11 @@ public final class MQAIModelPickerViewController: UIViewController, UITableViewD
         self.selectedId = selectedId
         super.init(nibName: nil, bundle: nil)
         modalPresentationStyle = .pageSheet
-        if let sheet = sheetPresentationController {
-            sheet.detents = [.medium(), .large()]
-            sheet.prefersGrabberVisible = true
+        if #available(iOS 15.0, *) {
+            if let sheet = sheetPresentationController {
+                sheet.detents = [.medium(), .large()]
+                sheet.prefersGrabberVisible = true
+            }
         }
     }
 

@@ -314,40 +314,38 @@ public final class MQAIChatViewController: UIViewController, UITextViewDelegate,
     }
 
     private func configureSearchToggle() {
-        var config = UIButton.Configuration.plain()
-        config.image = MQAIIcons.globe
-        config.imagePadding = 6
-        config.title = "Search"
-        config.contentInsets = NSDirectionalEdgeInsets(top: 0, leading: 12, bottom: 0, trailing: 14)
-        config.baseForegroundColor = isWebSearchEnabled ? .white : .white
-        config.background.backgroundColor = isWebSearchEnabled
+        let pillFont = UIFont.systemFont(ofSize: 14, weight: .medium)
+        searchToggleButton.setImage(MQAIIcons.globe, for: .normal)
+        searchToggleButton.setTitle("Search", for: .normal)
+        searchToggleButton.setTitleColor(.white, for: .normal)
+        searchToggleButton.tintColor = .white
+        searchToggleButton.titleLabel?.font = pillFont
+        searchToggleButton.backgroundColor = isWebSearchEnabled
             ? UIColor.systemBlue
             : UIColor(white: 0.22, alpha: 1)
-        config.background.cornerRadius = 16
-        config.attributedTitle = AttributedString("Search", attributes: AttributeContainer([
-            .font: UIFont.systemFont(ofSize: 14, weight: .medium),
-        ]))
-        searchToggleButton.configuration = config
+        searchToggleButton.layer.cornerRadius = 16
+        searchToggleButton.layer.masksToBounds = true
+        searchToggleButton.contentEdgeInsets = UIEdgeInsets(top: 0, left: 12, bottom: 0, right: 14)
+        searchToggleButton.imageEdgeInsets = UIEdgeInsets(top: 0, left: 0, bottom: 0, right: 6)
+        searchToggleButton.titleEdgeInsets = UIEdgeInsets(top: 0, left: 6, bottom: 0, right: 0)
     }
 
     private func configureModelPill() {
-        var config = UIButton.Configuration.plain()
-        config.image = MQAIIcons.modelGlyph
-        config.imagePadding = 6
-        config.contentInsets = NSDirectionalEdgeInsets(top: 0, leading: 10, bottom: 0, trailing: 10)
-        config.baseForegroundColor = .white
-        config.background.backgroundColor = UIColor(white: 0.22, alpha: 1)
-        config.background.cornerRadius = 16
-        modelPillButton.configuration = config
+        let pillFont = UIFont.systemFont(ofSize: 14, weight: .medium)
+        modelPillButton.setImage(MQAIIcons.modelGlyph, for: .normal)
+        modelPillButton.setTitleColor(.white, for: .normal)
+        modelPillButton.tintColor = .white
+        modelPillButton.titleLabel?.font = pillFont
+        modelPillButton.backgroundColor = UIColor(white: 0.22, alpha: 1)
+        modelPillButton.layer.cornerRadius = 16
+        modelPillButton.layer.masksToBounds = true
+        modelPillButton.contentEdgeInsets = UIEdgeInsets(top: 0, left: 10, bottom: 0, right: 10)
+        modelPillButton.imageEdgeInsets = UIEdgeInsets(top: 0, left: 0, bottom: 0, right: 6)
+        modelPillButton.titleEdgeInsets = UIEdgeInsets(top: 0, left: 6, bottom: 0, right: 0)
     }
 
     private func refreshModelPillTitle() {
-        var config = modelPillButton.configuration ?? UIButton.Configuration.plain()
-        config.attributedTitle = AttributedString(
-            storage.selectedModel.displayName,
-            attributes: AttributeContainer([.font: UIFont.systemFont(ofSize: 14, weight: .medium)])
-        )
-        modelPillButton.configuration = config
+        modelPillButton.setTitle(storage.selectedModel.displayName, for: .normal)
     }
 
     // MARK: - Empty state
