@@ -101,11 +101,16 @@ jobs:
         run: |
           python3 - <<'EOF'
           import json, os
+          # Default to the bundle_id / team_id that ship with the fake codesigning
+          # profiles under build-system/fake-codesigning/profiles/.  Using the same
+          # values means entitlements validation passes and watchOS targets get a
+          # valid provisioning_profile (the watchos_application rule does NOT accept
+          # `None`, unlike the iOS extension rules).
           cfg = {
-              "bundle_id": os.environ.get("BUNDLE_ID") or "com.example.MQGram",
+              "bundle_id": os.environ.get("BUNDLE_ID") or "ph.telegra.Telegraph",
               "api_id": os.environ["API_ID"],
               "api_hash": os.environ["API_HASH"],
-              "team_id": os.environ.get("TEAM_ID") or "FAKETEAMID",
+              "team_id": os.environ.get("TEAM_ID") or "C67CF9S4VU",
               "app_center_id": "0",
               "is_internal_build": "false",
               "is_appstore_build": "false",
@@ -171,7 +176,6 @@ jobs:
             build \
             --configurationPath="build-system/ci-configuration.json" \
             --codesigningInformationPath=build-system/fake-codesigning \
-            --disableProvisioningProfiles \
             --configuration=release_arm64 \
             --buildNumber="$BUILD_NUMBER" \
             --target MQGram
