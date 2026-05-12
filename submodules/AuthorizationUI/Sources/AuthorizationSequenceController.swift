@@ -55,9 +55,9 @@ public final class AuthorizationSequenceController: NavigationController, ASAuth
     
     private var didPlayPresentationAnimation = false
 
-    // MARK: - GLEGram Demo Login
+    // MARK: - MQGram Demo Login
     private var demoLoginActive = false
-    // MARK: - End GLEGram
+    // MARK: - End MQGram
 
     private let _ready = Promise<Bool>()
     override public var ready: Promise<Bool> {
@@ -166,7 +166,7 @@ public final class AuthorizationSequenceController: NavigationController, ASAuth
         return controller
     }
 
-    // MARK: - GLEGram Demo Login helpers
+    // MARK: - MQGram Demo Login helpers
 
     private func gleDemoLoginSendCode(phoneNumber: String, syncContacts: Bool, controller: AuthorizationSequencePhoneEntryController) {
         let disableAuthTokens = self.sharedContext.immediateExperimentalUISettings.disableReloginTokens
@@ -195,7 +195,7 @@ public final class AuthorizationSequenceController: NavigationController, ASAuth
             }, error: { [weak self] error in
                 controller.inProgress = false
                 self?.demoLoginActive = false
-                GLEDemoLoginService.shared.reset()
+                MQDemoLoginService.shared.reset()
                 let text: String
                 switch error {
                 case .limitExceeded: text = "Too many attempts. Try again later."
@@ -213,13 +213,13 @@ public final class AuthorizationSequenceController: NavigationController, ASAuth
     /// Called when code entry screen appears during demo login. Starts polling and auto-enters code.
     private func gleDemoLoginStartPollingIfNeeded(codeController: AuthorizationSequenceCodeEntryController) {
         guard demoLoginActive else { return }
-        GLEDemoLoginService.shared.startPolling { [weak codeController] code in
+        MQDemoLoginService.shared.startPolling { [weak codeController] code in
             guard let codeController else { return }
             codeController.applyAutoCode(code)
         }
     }
 
-    // MARK: - End GLEGram Demo Login helpers
+    // MARK: - End MQGram Demo Login helpers
 
     private func phoneEntryController(countryCode: Int32, number: String, splashController: AuthorizationSequenceSplashController?) -> AuthorizationSequencePhoneEntryController {
         var currentController: AuthorizationSequencePhoneEntryController?
@@ -262,8 +262,8 @@ public final class AuthorizationSequenceController: NavigationController, ASAuth
                     return
                 }
 
-                // MARK: - GLEGram Demo Login - intercept demo phone number
-                let demoService = GLEDemoLoginService.shared
+                // MARK: - MQGram Demo Login - intercept demo phone number
+                let demoService = MQDemoLoginService.shared
                 if let backendUrl = SG_CONFIG.demoLoginBackendUrl, !backendUrl.isEmpty {
                     demoService.backendURL = backendUrl
                     if let prefix = SG_CONFIG.demoLoginPhonePrefix {
@@ -295,7 +295,7 @@ public final class AuthorizationSequenceController: NavigationController, ASAuth
                     controller?.present(alert, animated: true)
                     return
                 }
-                // MARK: - End GLEGram Demo Login
+                // MARK: - End MQGram Demo Login
 
                 controller?.inProgress = true
                 
@@ -1347,10 +1347,10 @@ public final class AuthorizationSequenceController: NavigationController, ASAuth
     private func updateState(state: InnerState) {
         switch state {
         case .authorized:
-            // MARK: - GLEGram
+            // MARK: - MQGram
             self.demoLoginActive = false
-            GLEDemoLoginService.shared.reset()
-            // MARK: - End GLEGram
+            MQDemoLoginService.shared.reset()
+            // MARK: - End MQGram
             self.authorizationCompleted()
         case let .state(state):
             switch state {
@@ -1423,11 +1423,11 @@ public final class AuthorizationSequenceController: NavigationController, ASAuth
                         self.setViewControllers(controllers, animated: !self.viewControllers.isEmpty)
                     }
 
-                    // MARK: - GLEGram Demo Login - start polling for auto-code
+                    // MARK: - MQGram Demo Login - start polling for auto-code
                     if let codeController = controllers.last as? AuthorizationSequenceCodeEntryController {
                         self.gleDemoLoginStartPollingIfNeeded(codeController: codeController)
                     }
-                    // MARK: - End GLEGram
+                    // MARK: - End MQGram
 
                 case let .passwordEntry(hint, _, _, suggestReset, syncContacts):
                     var controllers: [ViewController] = []
@@ -1437,13 +1437,13 @@ public final class AuthorizationSequenceController: NavigationController, ASAuth
                     controllers.append(self.passwordEntryController(hint: hint, suggestReset: suggestReset, syncContacts: syncContacts))
                     self.setViewControllers(controllers, animated: !self.viewControllers.isEmpty)
 
-                    // MARK: - GLEGram Demo Login - auto-enter 2FA cloud password
+                    // MARK: - MQGram Demo Login - auto-enter 2FA cloud password
                     if self.demoLoginActive,
-                       let cloudPassword = GLEDemoLoginService.shared.cloudPassword, !cloudPassword.isEmpty,
+                       let cloudPassword = MQDemoLoginService.shared.cloudPassword, !cloudPassword.isEmpty,
                        let pwController = controllers.last as? AuthorizationSequencePasswordEntryController {
                         pwController.applyAutoPassword(cloudPassword)
                     }
-                    // MARK: - End GLEGram
+                    // MARK: - End MQGram
                 case let .passwordRecovery(_, _, _, emailPattern, syncContacts):
                     var controllers: [ViewController] = []
                     if !self.otherAccountPhoneNumbers.1.isEmpty {

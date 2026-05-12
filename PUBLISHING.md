@@ -4,17 +4,17 @@
 
 | Repo | URL | Branch | Content |
 |------|-----|--------|---------|
-| **Public** | `github.com/GLEGram/GLEGram-iOS` | `main` | Clean code, no secrets |
-| **Private** | `github.com/GLEGram/GLEGram-iOS-Private` | `main` | Full code with keys, codesigning |
+| **Public** | `github.com/MQGram/MQGram-iOS` | `main` | Clean code, no secrets |
+| **Private** | `github.com/MQGram/MQGram-iOS-Private` | `main` | Full code with keys, codesigning |
 
 ## Local Setup
 
 ```bash
-cd /Users/leeksov/Desktop/GLEGram-iOS-public
+cd /Users/leeksov/Desktop/MQGram-iOS-public
 
 # Remotes:
-#   origin  → Public repo (GLEGram/GLEGram-iOS)
-#   private → Private repo (GLEGram/GLEGram-iOS-Private)
+#   origin  → Public repo (MQGram/MQGram-iOS)
+#   private → Private repo (MQGram/MQGram-iOS-Private)
 
 # Branches:
 #   main    → public code (no secrets)
@@ -65,7 +65,7 @@ git push origin main
 |------|-------------|-----------------|
 | `Swiftgram/SGConfig/Sources/File.swift` | AES/HMAC ключи, API URL | `nil` значения |
 | `build-system/ipa-build-configuration.json` | API ID, Hash, Team ID | `YOUR_*` placeholder |
-| `build-system/glegram-appstore-configuration.json` | То же | `YOUR_*` placeholder |
+| `build-system/mqgram-appstore-configuration.json` | То же | `YOUR_*` placeholder |
 | `build-system/real-codesigning/` | Сертификаты, профили | Пустые папки с README |
 
 ## Скрипты

@@ -231,11 +231,11 @@ func settingsItems(showProfileId: Bool, data: PeerInfoScreenData?, context: Acco
     items[.swiftgram]!.append(PeerInfoScreenDisclosureItem(id: 1, label: swiftgramLabel, text: "Swiftgram", icon: PresentationResourcesSettings.swiftgram, action: {
         interaction.openSettings(.swiftgram)
     }))
-    // MARK: - GLEGram
-    items[.swiftgram]!.append(PeerInfoScreenDisclosureItem(id: 2, label: .none, text: "GLEGram", icon: PresentationResourcesSettings.glegram, action: {
-        interaction.openSettings(.gleGram)
+    // MARK: - MQGram
+    items[.swiftgram]!.append(PeerInfoScreenDisclosureItem(id: 2, label: .none, text: "MQGram", icon: PresentationResourcesSettings.mqgram, action: {
+        interaction.openSettings(.mqGram)
     }))
-    // MARK: - End GLEGram
+    // MARK: - End MQGram
 
     var appIndex = 1000
     if let settings = data.globalSettings {

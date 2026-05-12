@@ -1,5 +1,5 @@
 #!/bin/zsh
-# Сборка GLEGram для симулятора
+# Сборка MQGram для симулятора
 #
 # Использование:
 #   ./scripts/buildsim.sh                 # сборка для симулятора
@@ -50,8 +50,8 @@ if [ "$CLEAN" = 1 ]; then
   "$BAZEL" clean
 fi
 
-echo "Building GLEGram for simulator (cpu=$CPU, buildNumber=$BUILD_NUMBER, version=$TELEGRAM_VERSION)..."
-"$BAZEL" build //Telegram:GLEGram \
+echo "Building MQGram for simulator (cpu=$CPU, buildNumber=$BUILD_NUMBER, version=$TELEGRAM_VERSION)..."
+"$BAZEL" build //Telegram:MQGram \
   --cpu="$CPU" \
   --define=buildNumber="$BUILD_NUMBER" \
   --define=telegramVersion="$TELEGRAM_VERSION" \

@@ -3,11 +3,11 @@ import SGDebugUI
 import SGSimpleSettings
 import SGSettingsUI
 import SGStrings
-// MARK: - GLEGram
+// MARK: - MQGram
 #if canImport(SGSupporters)
 import SGSupporters
 #endif
-// MARK: - End GLEGram
+// MARK: - End MQGram
 import CountrySelectionUI
 import Foundation
 import UIKit
@@ -170,7 +170,7 @@ enum PeerInfoContextSubject {
 enum PeerInfoSettingsSection {
     case swiftgram
     case swiftgramPro
-    case gleGram // MARK: - GLEGram
+    case mqGram // MARK: - MQGram
     case avatar
     case edit
     case proxy

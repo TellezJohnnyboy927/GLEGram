@@ -17,7 +17,7 @@ struct AppBadge: Identifiable, Hashable {
 
 func getAvailableAppBadges() -> [AppBadge] {
     // NOTE: We reuse the existing Swiftgram badge assets, but the underlying images were replaced
-    // with GLEGram ones. Keep only unique entries and use correct display names.
+    // with MQGram ones. Keep only unique entries and use correct display names.
     var appBadges: [AppBadge] = [
         // Default
         .init(displayName: "Dark Purple", assetName: "SkyAppBadge"),

@@ -1,6 +1,6 @@
-# GLEGram iOS
+# MQGram iOS
 
-GLEGram — privacy-focused Telegram iOS client based on [Swiftgram](https://github.com/Swiftgram/Telegram-iOS) and [Telegram iOS](https://github.com/TelegramMessenger/Telegram-iOS).
+MQGram — privacy-focused Telegram iOS client based on [Swiftgram](https://github.com/Swiftgram/Telegram-iOS) and [Telegram iOS](https://github.com/TelegramMessenger/Telegram-iOS).
 
 **Base version:** Telegram 12.5 / Swiftgram 12.5
 
@@ -30,7 +30,7 @@ GLEGram — privacy-focused Telegram iOS client based on [Swiftgram](https://git
 - Custom font replacement (A-Font style) with size control
 - Fake profile (local name, username, phone, badges)
 - Custom profile cover (image/video)
-- GLEGram app badges (7 color variants)
+- MQGram app badges (7 color variants)
 - Gift ID display
 
 ### Other Features
@@ -49,7 +49,7 @@ GLEGram — privacy-focused Telegram iOS client based on [Swiftgram](https://git
 ## Project Structure
 
 ```
-GLEGram/          — GLEGram-exclusive modules
+MQGram/          — MQGram-exclusive modules
 ├── SGSupporters/     Badges, subscriptions, encrypted API
 ├── SGDeletedMessages/ Saved deleted messages (namespace 1338)
 ├── SGFakeLocation/   Location spoofing
@@ -58,10 +58,10 @@ GLEGram/          — GLEGram-exclusive modules
 ├── DoubleBottom/     Hidden accounts
 ├── ChatPassword/     Per-chat password
 ├── VoiceMorpher/     Voice effects
-├── GLESettingsUI/    Settings controllers
+├── MQSettingsUI/    Settings controllers
 
 Swiftgram/        — Shared Swiftgram modules (50+)
-submodules/       — Telegram iOS base (patched with // MARK: - GLEGram)
+submodules/       — Telegram iOS base (patched with // MARK: - MQGram)
 Telegram/         — App target and extensions
 ```
 
@@ -107,11 +107,11 @@ Telegram/         — App target and extensions
 
 ## Contributing
 
-GLEGram code is organized in `GLEGram/` folder. All patches to Telegram source files are marked with:
+MQGram code is organized in `MQGram/` folder. All patches to Telegram source files are marked with:
 ```swift
-// MARK: - GLEGram
+// MARK: - MQGram
 <code>
-// MARK: - End GLEGram
+// MARK: - End MQGram
 ```
 
 ## Credits

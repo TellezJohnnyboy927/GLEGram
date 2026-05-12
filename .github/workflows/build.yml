@@ -1,12 +1,20 @@
-name: Build GLEGram
+name: Build MQGram
 
 on:
+  push:
+    branches: [main]
+    tags: ['v*', 'build-*']
+  pull_request:
+    branches: [main]
   workflow_dispatch:
     inputs:
       build_number:
         description: 'Build number override (leave empty for auto from commit count)'
         required: false
         default: ''
+
+permissions:
+  contents: write
 
 jobs:
   build:
@@ -93,6 +101,11 @@ jobs:
         run: |
           python3 - <<'EOF'
           import json, os
+          # Default to the bundle_id / team_id that ship with the fake codesigning
+          # profiles under build-system/fake-codesigning/profiles/.  Using the same
+          # values means entitlements validation passes and watchOS targets get a
+          # valid provisioning_profile (the watchos_application rule does NOT accept
+          # `None`, unlike the iOS extension rules).
           cfg = {
               "bundle_id": os.environ.get("BUNDLE_ID") or "ph.telegra.Telegraph",
               "api_id": os.environ["API_ID"],
@@ -143,14 +156,14 @@ jobs:
           echo "BUILD_NUMBER=$BUILD_NUMBER" >> "$GITHUB_ENV"
           echo "APP_VERSION=$APP_VERSION" >> "$GITHUB_ENV"
           echo "build_number=$BUILD_NUMBER" >> "$GITHUB_OUTPUT"
-          echo "GLEGram $APP_VERSION build $BUILD_NUMBER"
+          echo "MQGram $APP_VERSION build $BUILD_NUMBER"
 
       - name: Import fake certificates
         run: |
           cd /Users/Shared/telegram-ios
           python3 build-system/Make/ImportCertificates.py --path build-system/fake-codesigning/certs
 
-      - name: Build GLEGram (release_arm64)
+      - name: Build MQGram (release_arm64)
         run: |
           set -euo pipefail
           SOURCE_DIR=/Users/Shared/telegram-ios
@@ -165,7 +178,7 @@ jobs:
             --codesigningInformationPath=build-system/fake-codesigning \
             --configuration=release_arm64 \
             --buildNumber="$BUILD_NUMBER" \
-            --target GLEGram
+            --target MQGram
 
       - name: Collect artifacts
         run: |
@@ -175,49 +188,123 @@ jobs:
           rm -rf "$OUTPUT_PATH"
           mkdir -p "$OUTPUT_PATH"
 
-          # IPA — try GLEGram.ipa first, then any .ipa
+          # IPA — prefer the bazel-bin symlink (always points to the current
+          # configuration), fall back to a recursive search under bazel-out.
           IPA_FOUND=0
-          for f in bazel-out/applebin_ios-ios_arm*-opt-ST-*/bin/Telegram/GLEGram.ipa; do
-            if [ -f "$f" ]; then cp "$f" "$OUTPUT_PATH/GLEGram.ipa"; IPA_FOUND=1; break; fi
-          done
-          if [ "$IPA_FOUND" = "0" ]; then
-            for f in bazel-out/applebin_ios-ios_arm*-opt-ST-*/bin/Telegram/*.ipa; do
-              if [ -f "$f" ]; then cp "$f" "$OUTPUT_PATH/GLEGram.ipa"; IPA_FOUND=1; break; fi
-            done
+          if [ -f bazel-bin/Telegram/MQGram.ipa ]; then
+            cp -L bazel-bin/Telegram/MQGram.ipa "$OUTPUT_PATH/MQGram.ipa"
+            IPA_FOUND=1
+          else
+            CANDIDATE=$(find bazel-out -path '*/bin/Telegram/MQGram.ipa' -type f 2>/dev/null | head -n 1)
+            if [ -z "$CANDIDATE" ]; then
+              CANDIDATE=$(find bazel-out -path '*/bin/Telegram/*.ipa' -type f 2>/dev/null | head -n 1)
+            fi
+            if [ -n "$CANDIDATE" ]; then
+              cp "$CANDIDATE" "$OUTPUT_PATH/MQGram.ipa"
+              IPA_FOUND=1
+            fi
           fi
-          [ "$IPA_FOUND" = "0" ] && echo "::error::No IPA found in bazel-out" && exit 1
+          if [ "$IPA_FOUND" = "0" ]; then
+            echo "::error::No IPA found under bazel-bin or bazel-out"
+            echo "bazel-bin/Telegram listing:"
+            ls -la bazel-bin/Telegram 2>&1 || true
+            echo "find bazel-out:"
+            find bazel-out -name '*.ipa' 2>/dev/null | head -n 20 || true
+            exit 1
+          fi
 
-          # dSYMs
+          # dSYMs — collect everything Bazel generated alongside the IPA
           mkdir -p build/DSYMs
-          for f in bazel-out/applebin_ios-ios_arm*-opt-ST-*/bin/Telegram/*.dSYM; do
-            [ -d "$f" ] && cp -R "$f" build/DSYMs/
+          # First, anything next to the symlinked IPA target.
+          for f in bazel-bin/Telegram/*.dSYM bazel-bin/Telegram/*.framework.dSYM bazel-bin/Telegram/*.appex.dSYM; do
+            [ -e "$f" ] && cp -RL "$f" build/DSYMs/ 2>/dev/null || true
           done
-          zip -r "$OUTPUT_PATH/GLEGram.DSYMs.zip" build/DSYMs 1>/dev/null || true
+          # And anything else Bazel emitted under bazel-out.
+          while IFS= read -r f; do
+            [ -d "$f" ] && cp -R "$f" build/DSYMs/ 2>/dev/null || true
+          done < <(find bazel-out -path '*/bin/Telegram/*.dSYM' -prune 2>/dev/null)
+          zip -r "$OUTPUT_PATH/MQGram.DSYMs.zip" build/DSYMs 1>/dev/null || true
 
           echo "Artifacts:"
           ls -lh "$OUTPUT_PATH/"
 
-      - name: Upload IPA as workflow artifact
+      - name: Build sideload-friendly "lite" IPA
+        # Strips the embedded Telegram FZ-LLC provisioning profile, the watchOS
+        # companion app, all app extensions, and entitlement-gated Info.plist
+        # keys (UIBackgroundModes: voip/audio/remote-notification/location,
+        # NSUserActivityTypes). What's left is a single-binary iPhone app that
+        # a free Apple ID can re-sign cleanly via Sideloadly / AltStore on
+        # iOS 17+/18+ (where TrollStore is unavailable).
+        #
+        # Side effects: push notifications, Siri intents, share extension,
+        # widgets and broadcast-upload screen sharing are disabled in the lite
+        # build. The main app (chats, calls, AI tab, all GLEGram/MQGram
+        # features) keeps working.
+        run: |
+          set -euo pipefail
+          SOURCE_DIR=/Users/Shared/telegram-ios
+          ARTIFACTS_DIR="$SOURCE_DIR/build/artifacts"
+          STAGE="$SOURCE_DIR/build/lite-stage"
+          rm -rf "$STAGE" && mkdir -p "$STAGE"
+          cd "$STAGE"
+          unzip -q "$ARTIFACTS_DIR/MQGram.ipa"
+          rm -rf Payload/MQGram.app/PlugIns
+          rm -rf Payload/MQGram.app/Watch
+          rm -f  Payload/MQGram.app/embedded.mobileprovision
+          rm -rf Payload/MQGram.app/_CodeSignature
+          # Strip framework signatures too — Sideloadly re-signs them anyway.
+          find Payload/MQGram.app/Frameworks -name "_CodeSignature" -type d -prune -exec rm -rf {} +
+          python3 - <<'PY'
+          import plistlib
+          path = 'Payload/MQGram.app/Info.plist'
+          with open(path, 'rb') as f: p = plistlib.load(f)
+          modes = p.get('UIBackgroundModes', [])
+          keep = [m for m in modes if m in ('fetch', 'processing')]
+          if keep: p['UIBackgroundModes'] = keep
+          else:    p.pop('UIBackgroundModes', None)
+          p.pop('NSUserActivityTypes', None)
+          with open(path, 'wb') as f: plistlib.dump(p, f, fmt=plistlib.FMT_BINARY)
+          PY
+          zip -r -q -X "$ARTIFACTS_DIR/MQGram-lite.ipa" Payload SwiftSupport
+          echo "Lite artifact:"
+          ls -lh "$ARTIFACTS_DIR/MQGram-lite.ipa"
+
+      - name: Upload IPAs as workflow artifacts
         uses: actions/upload-artifact@v4
         with:
-          name: GLEGram-${{ env.BUILD_NUMBER }}
-          path: /Users/Shared/telegram-ios/build/artifacts/GLEGram.ipa
+          name: MQGram-${{ env.BUILD_NUMBER }}
+          path: |
+            /Users/Shared/telegram-ios/build/artifacts/MQGram.ipa
+            /Users/Shared/telegram-ios/build/artifacts/MQGram-lite.ipa
           retention-days: 30
 
       - name: Create GitHub Release
+        if: github.event_name != 'pull_request'
         uses: softprops/action-gh-release@v2
         with:
           tag_name: build-${{ env.BUILD_NUMBER }}
-          name: GLEGram ${{ env.APP_VERSION }} (${{ env.BUILD_NUMBER }})
+          name: MQGram ${{ env.APP_VERSION }} (${{ env.BUILD_NUMBER }})
           body: |
-            Unsigned GLEGram ${{ env.APP_VERSION }} build ${{ env.BUILD_NUMBER }}
+            Unsigned MQGram ${{ env.APP_VERSION }} build ${{ env.BUILD_NUMBER }}
+
+            **Two IPAs are attached:**
+            - `MQGram.ipa` — full build with all extensions (push, share,
+              widgets, Siri, broadcast upload, watch companion). Best for
+              **TrollStore** (iOS 14.0–16.6.1) or a paid Apple Developer
+              certificate that can grant Telegram's entitlements.
+            - `MQGram-lite.ipa` — stripped build with no extensions, no watch
+              app, no `UIBackgroundModes` for VoIP / push / audio. Use this
+              with **Sideloadly / AltStore / ESign** and a free Apple ID on
+              iOS 17+/18+ where TrollStore is unavailable. Push, Siri, widgets
+              and the share extension will be disabled in this variant.
 
             > ⚠️ **Unsigned IPA** — built with fake codesigning certificates.
             > You must resign it with your own developer certificate before installing.
           draft: false
           prerelease: false
           files: |
-            /Users/Shared/telegram-ios/build/artifacts/GLEGram.ipa
-            /Users/Shared/telegram-ios/build/artifacts/GLEGram.DSYMs.zip
+            /Users/Shared/telegram-ios/build/artifacts/MQGram.ipa
+            /Users/Shared/telegram-ios/build/artifacts/MQGram-lite.ipa
+            /Users/Shared/telegram-ios/build/artifacts/MQGram.DSYMs.zip
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}

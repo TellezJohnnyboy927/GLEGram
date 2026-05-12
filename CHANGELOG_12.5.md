@@ -1,4 +1,4 @@
-# GLEGram 12.5 — Changelog
+# MQGram 12.5 — Changelog
 
 **Base:** Swiftgram 12.5 (Telegram iOS 12.5)
 **Build:** 100005
@@ -8,9 +8,9 @@
 
 ## Migration from 12.3 to 12.5
 
-Full port of all GLEGram features onto the Swiftgram 12.5 codebase.
+Full port of all MQGram features onto the Swiftgram 12.5 codebase.
 166 files changed, 8211 insertions, 77 new files.
-All GLEGram code organized in `GLEGram/` folder and marked with `// MARK: - GLEGram` in Telegram source files.
+All MQGram code organized in `MQGram/` folder and marked with `// MARK: - MQGram` in Telegram source files.
 
 ---
 
@@ -20,32 +20,32 @@ All GLEGram code organized in `GLEGram/` folder and marked with `// MARK: - GLEG
 - Secret passcode unlocks a single hidden account
 - Keychain-based passcode storage
 - Settings controller with enable/disable toggle
-- Module: `GLEGram/DoubleBottom/`
+- Module: `MQGram/DoubleBottom/`
 
 ### Chat Password Protection
 - Lock individual chats/folders with device passcode or custom password
 - Keychain-based per-peer password storage
 - Settings controller with peer selection
-- Module: `GLEGram/ChatPassword/`
+- Module: `MQGram/ChatPassword/`
 
 ### Voice Morpher
 - 6 voice presets: Disabled, Anonymous, Female, Male, Child, Robot
 - OGG processing engine (ready for OpusBinding integration)
 - UserDefaults persistence with change notifications
-- Module: `GLEGram/VoiceMorpher/`
+- Module: `MQGram/VoiceMorpher/`
 
 ### SGLocalPremium
 - Full local Premium emulation without subscription
 - Unlimited pinned chats, folders, chats per folder
 - Saved Message Tags support
 - Server sync disabling for pinned/folders/folder order
-- Module: `GLEGram/SGLocalPremium/`
+- Module: `MQGram/SGLocalPremium/`
 
 ### Plugin System (Extended)
 - Inline JS plugin code editor
 - Plugin metadata parsing and file management
-- GLEGramFeatures global feature flags
-- Module: `GLEGram/GLESettingsUI/`, `Swiftgram/SGSimpleSettings/`
+- MQGramFeatures global feature flags
+- Module: `MQGram/MQSettingsUI/`, `Swiftgram/SGSimpleSettings/`
 
 ### Video Wallpapers
 - Video file picker (Files app + Gallery)
@@ -96,13 +96,13 @@ All GLEGram code organized in `GLEGram/` folder and marked with `// MARK: - GLEG
 - Export as JSON, TXT, HTML
 - AyuGram-style HTML export with CSS/JS
 - Context menu in profile "More" button
-- Module: `GLEGram/SGChatExport/`
+- Module: `MQGram/SGChatExport/`
 
 ### Fake Location
 - CLLocationManager swizzling
 - Map picker controller
 - Persistent coordinates
-- Module: `GLEGram/SGFakeLocation/`
+- Module: `MQGram/SGFakeLocation/`
 
 ### Supporters/Badges System
 - Encrypted API with AES-256 + HMAC-SHA256
@@ -110,13 +110,13 @@ All GLEGram code organized in `GLEGram/` folder and marked with `// MARK: - GLEG
 - Badge image cache
 - Server badges with custom colors/images
 - Subscription/trial tracking with expiry date display
-- Module: `GLEGram/SGSupporters/`
+- Module: `MQGram/SGSupporters/`
 
 ### Demo Login (App Store Review)
 - Backend-driven phone number interception
 - Auto code polling and entry
 - Auto 2FA password entry
-- Files: `AuthorizationSequenceController.swift`, `GLEDemoLoginService.swift`
+- Files: `AuthorizationSequenceController.swift`, `MQDemoLoginService.swift`
 
 ### Protected Content Override
 - Save protected/copy-protected media
@@ -149,17 +149,17 @@ All GLEGram code organized in `GLEGram/` folder and marked with `// MARK: - GLEG
 
 ## UI/Branding Changes
 
-- App name: **GLEGram**
-- Default icon: **GLEGramDarkPurple**
+- App name: **MQGram**
+- Default icon: **MQGramDarkPurple**
 - 7 alternate icons: DarkPurple, Black, Green, Pink, Purple, Red, Duck
-- App badges: GLEGram-branded (Sky, Night, Pro, Titanium, Day, Sparkling, Ducky)
-- Settings icons: GLEGram-branded Swiftgram/SwiftgramPro icons
-- Composer icon: GLEGram.icon with GLEGramDarkPurple.png
-- Intro sphere: GLEGram-branded telegram_sphere@2x.png
-- CFBundleDisplayName: GLEGram (all extensions)
-- URL scheme: `glegram://` added
+- App badges: MQGram-branded (Sky, Night, Pro, Titanium, Day, Sparkling, Ducky)
+- Settings icons: MQGram-branded Swiftgram/SwiftgramPro icons
+- Composer icon: MQGram.icon with MQGramDarkPurple.png
+- Intro sphere: MQGram-branded telegram_sphere@2x.png
+- CFBundleDisplayName: MQGram (all extensions)
+- URL scheme: `mqgram://` added
 - Notification service: processDeletedMessages
-- GLEGram tab in Settings with subscription expiry date label
+- MQGram tab in Settings with subscription expiry date label
 
 ---
 
@@ -167,7 +167,7 @@ All GLEGram code organized in `GLEGram/` folder and marked with `// MARK: - GLEG
 
 - Bazel JDK fix: `--server_javabase` for JDK 21 (fixes SIGBUS on macOS 15.7.4)
 - Prebuilt opus: instant build instead of 10min genrule
-- GLEGram BUILD target with Swiftgram alias
+- MQGram BUILD target with Swiftgram alias
 - 15 build scripts ported (buildprod, buildsim, deploy, sign, etc.)
 - Real codesigning profiles
 - Provisioning profile fallback logic
@@ -191,8 +191,8 @@ All GLEGram code organized in `GLEGram/` folder and marked with `// MARK: - GLEG
 
 ## Localization
 
-- 110 language files with 386 strings each (107 GLEGram-specific strings added)
-- Full Russian and English translations for all GLEGram features
+- 110 language files with 386 strings each (107 MQGram-specific strings added)
+- Full Russian and English translations for all MQGram features
 - 5 new 12.5 strings preserved (ChatList.Lines, CompactMessagePreview)
 
 ---
@@ -200,10 +200,10 @@ All GLEGram code organized in `GLEGram/` folder and marked with `// MARK: - GLEG
 ## File Structure
 
 ```
-GLEGram/
+MQGram/
 ├── ChatPassword/        (chat lock)
 ├── DoubleBottom/        (hidden accounts)
-├── GLESettingsUI/       (18 controllers + plugins)
+├── MQSettingsUI/       (18 controllers + plugins)
 ├── SGChatExport/        (HTML/JSON/TXT export)
 ├── SGDeletedMessages/   (saved deleted messages)
 ├── SGFakeLocation/      (location spoofing)

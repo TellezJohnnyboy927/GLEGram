@@ -11,17 +11,17 @@ import SGAPIWebSettings
 import SGLogging
 import SGStrings
 import SGSimpleSettings
-// MARK: - GLEGram
+// MARK: - MQGram
 import SGConfig
 #if canImport(SGSupporters)
 import SGSupporters
 #endif
-// MARK: - End GLEGram
-// MARK: - GLEGram
+// MARK: - End MQGram
+// MARK: - MQGram
 #if canImport(SGDeletedMessages)
 import SGDeletedMessages
 #endif
-// MARK: - End GLEGram
+// MARK: - End MQGram
 import UIKit
 import SwiftSignalKit
 import Display
@@ -438,7 +438,24 @@ private func extractAccountManagerState(records: AccountRecordsView<TelegramAcco
         }
         self.window = window
         self.nativeWindow = window
-        
+
+        // MARK: - MQGram
+        // Make the window key+visible as soon as it has a rootViewController and a
+        // background color, BEFORE any guard / early-bail path in
+        // didFinishLaunchingWithOptions runs. Several setup steps below
+        // (App Group container lookup, write-ability test, etc.) can call
+        // `self.mainWindow?.presentNative(...)` and `return true`. If the
+        // window is not yet key+visible at that point, the alert silently
+        // never appears and the user just sees a permanent black screen on
+        // launch instead of a meaningful error.
+        //
+        // The rootViewController was already attached inside
+        // `nativeWindowHostView()` and `hostView.containerView.backgroundColor`
+        // was just set above, so the transition from the launch screen to our
+        // (empty) window is visually consistent with the rest of startup.
+        window.makeKeyAndVisible()
+        // MARK: - End MQGram
+
         hostView.containerView.layer.addSublayer(MetalEngine.shared.rootLayer)
         
         if !UIDevice.current.isBatteryMonitoringEnabled {
@@ -554,7 +571,84 @@ private func extractAccountManagerState(records: AccountRecordsView<TelegramAcco
         
         let baseAppBundleId = Bundle.main.bundleIdentifier!
         let appGroupName = "group.\(baseAppBundleId)"
-        let maybeAppGroupUrl = FileManager.default.containerURL(forSecurityApplicationGroupIdentifier: appGroupName)
+        // MARK: - MQGram
+        // The App Group entitlement is only granted by a paid Apple Developer
+        // account / TrollStore. When the IPA is re-signed by Sideloadly /
+        // AltStore with a free Apple ID:
+        //   * containerURL(forSecurityApplicationGroupIdentifier:) sometimes
+        //     returns `nil`, and
+        //   * sometimes it returns a non-nil URL that points at a sandboxed
+        //     location iOS will silently refuse writes to.
+        // In upstream Telegram both cases end up either at "Error 2" or at
+        // the 1 MiB write-ability test ("The device does not have sufficient
+        // free space."), and because those alerts are shown before
+        // makeKeyAndVisible they previously produced a permanent black
+        // screen.  We probe write-access to whatever container URL iOS gives
+        // us, and if it is not actually writable we fall back to a
+        // guaranteed-writable directory inside the app's own sandbox.
+        //
+        // Production / TrollStore builds keep using the real shared App
+        // Group container because the probe succeeds there.
+        func mqGramProbeWritable(_ url: URL) -> Bool {
+            let probe = url.appendingPathComponent(".mqgram-probe-\(UInt64.random(in: 0...UInt64.max))")
+            do {
+                try "ok".write(to: probe, atomically: true, encoding: .utf8)
+            } catch {
+                return false
+            }
+            try? FileManager.default.removeItem(at: probe)
+            return true
+        }
+
+        func mqGramSandboxFallback() -> URL? {
+            let fm = FileManager.default
+            // Candidate roots, in preference order.  Library/Application Support
+            // is the canonical Apple location for app-private persistent data,
+            // not user-visible in the Files app, and not auto-purged by iOS.
+            // Documents is a second-tier fallback (writable on every iOS
+            // version, but user-visible).  tmp is a last resort because iOS
+            // can clear it between launches.
+            var candidates: [URL] = []
+            if let appSupport = try? fm.url(
+                for: .applicationSupportDirectory,
+                in: .userDomainMask,
+                appropriateFor: nil,
+                create: true
+            ) {
+                candidates.append(appSupport.appendingPathComponent("MQGramAppGroup", isDirectory: true))
+            }
+            if let docs = fm.urls(for: .documentDirectory, in: .userDomainMask).first {
+                candidates.append(docs.appendingPathComponent("MQGramAppGroup", isDirectory: true))
+            }
+            candidates.append(URL(fileURLWithPath: NSTemporaryDirectory(), isDirectory: true)
+                .appendingPathComponent("MQGramAppGroup", isDirectory: true))
+
+            for candidate in candidates {
+                if (try? fm.createDirectory(at: candidate, withIntermediateDirectories: true)) == nil
+                   && !fm.fileExists(atPath: candidate.path) {
+                    continue
+                }
+                if mqGramProbeWritable(candidate) {
+                    return candidate
+                }
+            }
+            return nil
+        }
+
+        var maybeAppGroupUrl: URL? = FileManager.default.containerURL(forSecurityApplicationGroupIdentifier: appGroupName)
+        if let url = maybeAppGroupUrl, !mqGramProbeWritable(url) {
+            print("[MQGram] App Group container '\(url.path)' is not writable, falling back to sandbox")
+            maybeAppGroupUrl = nil
+        }
+        if maybeAppGroupUrl == nil {
+            if let fallback = mqGramSandboxFallback() {
+                maybeAppGroupUrl = fallback
+                print("[MQGram] App Group '\(appGroupName)' unavailable — using sandbox fallback at \(fallback.path)")
+            } else {
+                print("[MQGram] App Group '\(appGroupName)' unavailable and no writable sandbox fallback could be created")
+            }
+        }
+        // MARK: - End MQGram
         
         let buildConfig = BuildConfig(baseAppBundleId: baseAppBundleId)
         self.buildConfig = buildConfig
@@ -653,7 +747,22 @@ private func extractAccountManagerState(records: AccountRecordsView<TelegramAcco
         }, autolockDeadine: autolockDeadine, encryptionProvider: OpenSSLEncryptionProvider(), deviceModelName: nil, useBetaFeatures: !buildConfig.isAppStoreBuild, isICloudEnabled: buildConfig.isICloudEnabled)
         
         guard let appGroupUrl = maybeAppGroupUrl else {
-            self.mainWindow?.presentNative(UIAlertController(title: nil, message: "Error 2", preferredStyle: .alert))
+            // MARK: - MQGram
+            // The sandbox fallback above means this branch should normally be
+            // unreachable. If we do somehow get here (e.g. the sandbox
+            // Documents directory could not be created), surface a real,
+            // user-visible alert with retry/quit actions instead of leaving
+            // the user staring at a black screen.
+            let alert = UIAlertController(
+                title: "MQGram",
+                message: "Cannot access App Group container 'group.\(baseAppBundleId)' and sandbox fallback also failed. Reinstall the app or free up storage and try again.",
+                preferredStyle: .alert
+            )
+            alert.addAction(UIAlertAction(title: "Quit", style: .destructive, handler: { _ in
+                preconditionFailure("App Group container unavailable")
+            }))
+            self.mainWindow?.presentNative(alert)
+            // MARK: - End MQGram
             return true
         }
         
@@ -693,6 +802,17 @@ private func extractAccountManagerState(records: AccountRecordsView<TelegramAcco
         performAppGroupUpgrades(appGroupPath: appGroupUrl.path, rootPath: rootPath)
         }
         
+        // MARK: - MQGram
+        // performAppGroupUpgrades creates `rootPath` asynchronously on a
+        // background queue.  We need rootPath and rootPath/temp/app to exist
+        // synchronously before TempBox + the 1 MiB writeAbilityTest below run
+        // on the main thread, otherwise TempBox's createDirectory races and
+        // the write test fails with a misleading "device does not have
+        // sufficient free space" alert.  Create them eagerly here.
+        let _ = try? FileManager.default.createDirectory(atPath: rootPath, withIntermediateDirectories: true, attributes: nil)
+        let _ = try? FileManager.default.createDirectory(atPath: rootPath + "/temp/app", withIntermediateDirectories: true, attributes: nil)
+        // MARK: - End MQGram
+
         let deviceSpecificEncryptionParameters = BuildConfig.deviceSpecificEncryptionParameters(rootPath, baseAppBundleId: baseAppBundleId)
         let encryptionParameters = ValueBoxEncryptionParameters(forceEncryptionIfNoSet: false, key: ValueBoxEncryptionParameters.Key(data: deviceSpecificEncryptionParameters.key)!, salt: ValueBoxEncryptionParameters.Salt(data: deviceSpecificEncryptionParameters.salt)!)
         
@@ -723,12 +843,28 @@ private func extractAccountManagerState(records: AccountRecordsView<TelegramAcco
         }
         
         if !writeAbilityTestSuccess {
-            let alertController = UIAlertController(title: nil, message: "The device does not have sufficient free space.", preferredStyle: .alert)
+            // MARK: - MQGram
+            // Show a diagnostic alert with the actual path that failed to be
+            // written instead of the generic "device does not have sufficient
+            // free space" message, which is misleading when the real cause is
+            // an entitlement-stripped App Group container or a sandbox
+            // fallback directory we cannot reach.
+            let message = """
+            MQGram could not write its data directory.
+
+            Path: \(writeAbilityTestFile.path)
+
+            This usually means the App Group entitlement was stripped during \
+            re-signing. Try reinstalling the app or, if it keeps happening, \
+            free up storage on the device.
+            """
+            let alertController = UIAlertController(title: "MQGram", message: message, preferredStyle: .alert)
             alertController.addAction(UIAlertAction(title: "OK", style: .default, handler: { _ in
                 preconditionFailure()
             }))
             self.mainWindow?.presentNative(alertController)
-            
+            // MARK: - End MQGram
+
             return true
         }
         
@@ -2119,13 +2255,13 @@ private func extractAccountManagerState(records: AccountRecordsView<TelegramAcco
         self.isActiveValue = true
         self.isActivePromise.set(true)
 
-        // MARK: - GLEGram - Process overdue ghost-delayed messages on becoming active
+        // MARK: - MQGram - Process overdue ghost-delayed messages on becoming active
         let _ = (self.sharedContextPromise.get()
             |> take(1)
             |> deliverOnMainQueue).start(next: { sharedContext in
                 sharedContext.sharedContext.processOverdueGhostDelayedMessagesForAllAccounts()
             })
-        // MARK: - End GLEGram
+        // MARK: - End MQGram
 
         self.resetBadge()
         

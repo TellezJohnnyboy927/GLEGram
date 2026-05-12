@@ -495,11 +495,11 @@ final class PeerInfoHeaderNode: ASDisplayNode {
         case fake
         case scam
         case emojiStatus(PeerEmojiStatus)
-        // MARK: - GLEGram
-        case verifiedGLEGram
+        // MARK: - MQGram
+        case verifiedMQGram
         case developer
         case serverBadge(name: String, colorRgb: UInt32)
-        // MARK: - End GLEGram
+        // MARK: - End MQGram
     }
     
     private var currentCredibilityIcon: CredibilityIcon?
@@ -611,19 +611,19 @@ final class PeerInfoHeaderNode: ASDisplayNode {
         var verifiedIcon: CredibilityIcon = .none
         var statusIcon: CredibilityIcon = .none
         if let peer {
-            // MARK: - GLEGram - verified badge + badges
+            // MARK: - MQGram - verified badge + badges
             #if canImport(SGSimpleSettings)
-            let glegramChannelIds: Set<Int64> = [-1003574063854, -1003791606969, -1003618396753]
-            let isGLEGramChannel = (peer as? TelegramChannel) != nil && (peer.addressName?.lowercased() == "glegramios" || glegramChannelIds.contains(peer.id.toInt64()))
+            let mqgramChannelIds: Set<Int64> = [-1003574063854, -1003791606969, -1003618396753]
+            let isMQGramChannel = (peer as? TelegramChannel) != nil && (peer.addressName?.lowercased() == "mqgramios" || mqgramChannelIds.contains(peer.id.toInt64()))
             #else
-            let isGLEGramChannel = false
+            let isMQGramChannel = false
             #endif
-            let isVerifiedPeer = isGLEGramChannel || peer.isVerified || (peer as? TelegramChannel)?.flags.contains(.isVerified) ?? false
+            let isVerifiedPeer = isMQGramChannel || peer.isVerified || (peer as? TelegramChannel)?.flags.contains(.isVerified) ?? false
 
             if peer.id == self.context.account.peerId && !self.isSettings && !self.isMyProfile {
                 credibilityIcon = .none
             } else if isVerifiedPeer {
-                credibilityIcon = isGLEGramChannel ? .verifiedGLEGram : .verified
+                credibilityIcon = isMQGramChannel ? .verifiedMQGram : .verified
             } else if peer.isFake {
                 credibilityIcon = .fake
             } else if peer.isScam {
@@ -661,7 +661,7 @@ final class PeerInfoHeaderNode: ASDisplayNode {
                 }
             }
             #endif
-            // MARK: - End GLEGram
+            // MARK: - End MQGram
 
             if peer.isVerified {
                 credibilityIcon = .verified
@@ -968,11 +968,11 @@ final class PeerInfoHeaderNode: ASDisplayNode {
             case .scam:
                 emojiRegularStatusContent = .text(color: presentationData.theme.chat.message.incoming.scamColor, string: presentationData.strings.Message_ScamAccount.uppercased())
                 emojiExpandedStatusContent = emojiRegularStatusContent
-            // MARK: - GLEGram
-            case .verifiedGLEGram:
-                let glegramBadgeImage = UIImage(bundleImageName: "GLEGramVerifiedBadge")
-                emojiRegularStatusContent = .image(image: glegramBadgeImage, tintColor: nil)
-                emojiExpandedStatusContent = .image(image: glegramBadgeImage, tintColor: nil)
+            // MARK: - MQGram
+            case .verifiedMQGram:
+                let mqgramBadgeImage = UIImage(bundleImageName: "MQGramVerifiedBadge")
+                emojiRegularStatusContent = .image(image: mqgramBadgeImage, tintColor: nil)
+                emojiExpandedStatusContent = .image(image: mqgramBadgeImage, tintColor: nil)
                 emojiStatusSize = CGSize(width: 32.0, height: 32.0)
             case .developer:
                 let developerColor = UIColor(rgb: 0x00A8FF)
@@ -981,7 +981,7 @@ final class PeerInfoHeaderNode: ASDisplayNode {
             case let .serverBadge(name, colorRgb):
                 emojiRegularStatusContent = .text(color: UIColor(rgb: colorRgb), string: name)
                 emojiExpandedStatusContent = emojiRegularStatusContent
-            // MARK: - End GLEGram
+            // MARK: - End MQGram
             case let .emojiStatus(emojiStatus):
                 currentEmojiStatus = emojiStatus
                 emojiRegularStatusContent = .animation(content: .customEmoji(fileId: emojiStatus.fileId), size: CGSize(width: 80.0, height: 80.0), placeholderColor: presentationData.theme.list.mediaPlaceholderColor, themeColor: navigationContentsAccentColor, loopMode: .forever)
@@ -1159,11 +1159,11 @@ final class PeerInfoHeaderNode: ASDisplayNode {
             case .verified:
                 emojiRegularStatusContent = .verified(fillColor: presentationData.theme.list.itemCheckColors.fillColor, foregroundColor: presentationData.theme.list.itemCheckColors.foregroundColor, sizeType: .large)
                 emojiExpandedStatusContent = .verified(fillColor: navigationContentsAccentColor, foregroundColor: .clear, sizeType: .large)
-            // MARK: - GLEGram
-            case .verifiedGLEGram:
-                let glegramBadgeImage = UIImage(bundleImageName: "GLEGramVerifiedBadge")
-                emojiRegularStatusContent = .image(image: glegramBadgeImage, tintColor: nil)
-                emojiExpandedStatusContent = .image(image: glegramBadgeImage, tintColor: nil)
+            // MARK: - MQGram
+            case .verifiedMQGram:
+                let mqgramBadgeImage = UIImage(bundleImageName: "MQGramVerifiedBadge")
+                emojiRegularStatusContent = .image(image: mqgramBadgeImage, tintColor: nil)
+                emojiExpandedStatusContent = .image(image: mqgramBadgeImage, tintColor: nil)
             case .developer:
                 let developerColor = UIColor(rgb: 0x00A8FF)
                 emojiRegularStatusContent = .text(color: developerColor, string: "DEV")
@@ -1171,7 +1171,7 @@ final class PeerInfoHeaderNode: ASDisplayNode {
             case let .serverBadge(name, colorRgb):
                 emojiRegularStatusContent = .text(color: UIColor(rgb: colorRgb), string: name)
                 emojiExpandedStatusContent = emojiRegularStatusContent
-            // MARK: - End GLEGram
+            // MARK: - End MQGram
             case let .emojiStatus(emojiStatus):
                 emojiRegularStatusContent = .animation(content: .customEmoji(fileId: emojiStatus.fileId), size: CGSize(width: 80.0, height: 80.0), placeholderColor: presentationData.theme.list.mediaPlaceholderColor, themeColor: navigationContentsAccentColor, loopMode: .forever)
                 emojiExpandedStatusContent = .animation(content: .customEmoji(fileId: emojiStatus.fileId), size: CGSize(width: 80.0, height: 80.0), placeholderColor: navigationContentsAccentColor, themeColor: navigationContentsAccentColor, loopMode: .forever)

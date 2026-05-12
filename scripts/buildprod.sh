@@ -1,5 +1,5 @@
 #!/bin/zsh
-# Продакшн-сборка GLEGram (IPA, release_arm64)
+# Продакшн-сборка MQGram (IPA, release_arm64)
 #
 # Использование:
 #   ./scripts/buildprod.sh
@@ -39,14 +39,14 @@ if [ "$CLEAN" = 1 ]; then
   [ -x "./build-input/bazel-8.4.2-darwin-arm64" ] && ./build-input/bazel-8.4.2-darwin-arm64 clean || bazel clean
 fi
 
-echo "Building GLEGram (release_arm64, buildNumber=$BUILD_NUMBER)..."
+echo "Building MQGram (release_arm64, buildNumber=$BUILD_NUMBER)..."
 python3 build-system/Make/Make.py \
   --cacheDir="$CACHE_DIR" \
   build \
   --configurationPath="$CONFIGURATION_PATH" \
   --codesigningInformationPath="$CODESIGNING_PATH" \
   --buildNumber="$BUILD_NUMBER" \
-  --target GLEGram \
+  --target MQGram \
   --configuration=release_arm64
 
 echo "Build complete."
