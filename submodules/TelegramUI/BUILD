@@ -13,10 +13,11 @@ sgdeps = [
     "//Swiftgram/SGSimpleSettings:SGSimpleSettings",
     "//Swiftgram/SFSafariViewControllerPlus:SFSafariViewControllerPlus",
     "//Swiftgram/SGLogging:SGLogging",
-    # MARK: GLEGram
-    "//GLEGram/SGDeletedMessages:SGDeletedMessages",
-    "//GLEGram/SGSupporters:SGSupporters",
-    "//GLEGram/SGFakeLocation:SGFakeLocation",
+    # MARK: MQGram
+    "//MQGram/SGDeletedMessages:SGDeletedMessages",
+    "//MQGram/SGSupporters:SGSupporters",
+    "//MQGram/SGFakeLocation:SGFakeLocation",
+    "//MQGram/MQAI:MQAI",
     "//Swiftgram/SGStrings:SGStrings",
     "//Swiftgram/SGActionRequestHandlerSanitizer:SGActionRequestHandlerSanitizer",
     "//Swiftgram/Wrap:Wrap",

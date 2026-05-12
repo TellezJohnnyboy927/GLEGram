@@ -443,7 +443,7 @@ public class SGSimpleSettings {
         Keys.duckyAppIconAvailable.rawValue: true,
         Keys.transcriptionBackend.rawValue: TranscriptionBackend.default.rawValue,
         Keys.translationBackend.rawValue: TranslationBackend.default.rawValue,
-        // Default app badge (GLEGram Dark Purple)
+        // Default app badge (MQGram Dark Purple)
         Keys.customAppBadge.rawValue: "SkyAppBadge",
         Keys.canUseNY.rawValue: false,
         Keys.nyStyle.rawValue: NYStyle.default.rawValue,

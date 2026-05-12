@@ -335,7 +335,7 @@ func _internal_markAllChatsAsReadInteractively(transaction: Transaction, network
     }
 }
 
-// MARK: - GLEGram - Marks all chats as read **locally only**. Updates Postbox and UI; does **not** sync to server (no API calls, no sync ops).
+// MARK: - MQGram - Marks all chats as read **locally only**. Updates Postbox and UI; does **not** sync to server (no API calls, no sync ops).
 func _internal_markAllChatsAsReadLocallyOnly(transaction: Transaction, viewTracker: AccountViewTracker, groupId: PeerGroupId, filterPredicate: ChatListFilterPredicate?) {
     var statesToReset: [PeerId: [MessageId.Namespace: PeerReadState]] = [:]
     let peerIds = transaction.getUnreadChatListPeerIds(groupId: groupId, filterPredicate: filterPredicate, additionalFilter: nil, stopOnFirstMatch: false)

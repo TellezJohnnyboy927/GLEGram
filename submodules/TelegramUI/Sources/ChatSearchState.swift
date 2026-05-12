@@ -5,8 +5,8 @@ import TelegramCore
 struct ChatSearchState: Equatable {
     let query: String
     let location: SearchMessagesLocation
-    // MARK: - GLEGram
+    // MARK: - MQGram
     let onlyDeleted: Bool
-    // MARK: - End GLEGram
+    // MARK: - End MQGram
     let loadMoreState: SearchMessagesState?
 }

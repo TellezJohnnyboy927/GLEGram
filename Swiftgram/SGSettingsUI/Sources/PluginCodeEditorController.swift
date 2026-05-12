@@ -1,4 +1,4 @@
-// MARK: GLEGram – Plugin code editor (create/edit JS plugins inline)
+// MARK: MQGram – Plugin code editor (create/edit JS plugins inline)
 import Foundation
 import UIKit
 import Display
@@ -114,8 +114,8 @@ private func pluginCodeEditorEntries(state: PluginCodeEditorState, presentationD
     entries.append(.nameInput(id: 0, text: state.name, placeholder: lang == "ru" ? "Имя плагина" : "Plugin name"))
     entries.append(.codeInput(id: 1, text: state.code, placeholder: lang == "ru" ? "JavaScript код..." : "JavaScript code..."))
     let noticeText = lang == "ru"
-        ? "Используйте GLEGram.ui, GLEGram.chat, GLEGram.compose, GLEGram.messageActions, GLEGram.intercept, GLEGram.network, GLEGram.settings, GLEGram.events API."
-        : "Use GLEGram.ui, GLEGram.chat, GLEGram.compose, GLEGram.messageActions, GLEGram.intercept, GLEGram.network, GLEGram.settings, GLEGram.events API."
+        ? "Используйте MQGram.ui, MQGram.chat, MQGram.compose, MQGram.messageActions, MQGram.intercept, MQGram.network, MQGram.settings, MQGram.events API."
+        : "Use MQGram.ui, MQGram.chat, MQGram.compose, MQGram.messageActions, MQGram.intercept, MQGram.network, MQGram.settings, MQGram.events API."
     entries.append(.notice(id: 2, text: noticeText))
     return entries
 }
