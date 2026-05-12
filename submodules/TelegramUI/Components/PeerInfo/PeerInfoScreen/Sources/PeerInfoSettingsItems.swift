@@ -201,37 +201,11 @@ func settingsItems(showProfileId: Bool, data: PeerInfoScreenData?, context: Acco
     
     // let locale = presentationData.strings.baseLanguageCode
     // MARK: Swiftgram
-    let hasNewSGFeatures = {
-        return false
-    }
-    let swiftgramLabel: PeerInfoScreenDisclosureItem.Label
-    if hasNewSGFeatures() {
-        swiftgramLabel = .titleBadge(presentationData.strings.Settings_New, presentationData.theme.list.itemAccentColor)
-    } else {
-        swiftgramLabel = .none
-    }
-
-    let hasNewSGProFeatures = {
-        return false
-    }
-    let swiftgramProLabel: PeerInfoScreenDisclosureItem.Label
-    if hasNewSGProFeatures() {
-        swiftgramProLabel = .titleBadge(presentationData.strings.Settings_New, presentationData.theme.list.itemAccentColor)
-    } else {
-        swiftgramProLabel = .none
-    }
-    
-    
     let sgWebSettings = context.currentAppConfiguration.with({ $0 }).sgWebSettings
-    if sgWebSettings.global.paymentsEnabled || context.sharedContext.immediateSGStatus.status > 1 {
-        items[.swiftgram]!.append(PeerInfoScreenDisclosureItem(id: 0, label: swiftgramProLabel, text: "Swiftgram Pro", icon: PresentationResourcesSettings.swiftgramPro, action: {
-            interaction.openSettings(.swiftgramPro)
-        }))
-    }
-    items[.swiftgram]!.append(PeerInfoScreenDisclosureItem(id: 1, label: swiftgramLabel, text: "Swiftgram", icon: PresentationResourcesSettings.swiftgram, action: {
-        interaction.openSettings(.swiftgram)
-    }))
     // MARK: - MQGram
+    // Swiftgram and Swiftgram Pro disclosure rows are hidden by user request.
+    // The original Swiftgram settings stay reachable via a 2-second long-press
+    // on the Stars ("Кошелёк") row in this same settings screen — see below.
     items[.swiftgram]!.append(PeerInfoScreenDisclosureItem(id: 2, label: .none, text: "MQGram", icon: PresentationResourcesSettings.mqgram, action: {
         interaction.openSettings(.mqGram)
     }))
@@ -333,9 +307,16 @@ func settingsItems(showProfileId: Bool, data: PeerInfoScreenData?, context: Acco
             } else {
                 balanceText = NSAttributedString()
             }
+            // MARK: - MQGram
+            // Long-press (2 s) on the Stars row opens the hidden Swiftgram
+            // settings screen, since the Swiftgram disclosure rows themselves
+            // were removed by user request.
             items[.payment]!.append(PeerInfoScreenDisclosureItem(id: 102, label: .attributedText(balanceText), text: presentationData.strings.Settings_Stars, icon: PresentationResourcesSettings.stars, action: {
                 interaction.openSettings(.stars)
+            }, longPressAction: {
+                interaction.openSettings(.swiftgram)
             }))
+            // MARK: - End MQGram
         }
     }
     if let tonState = data.tonState {

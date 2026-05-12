@@ -232,10 +232,9 @@ public final class TelegramRootController: NavigationController, TelegramRootCon
         controllers.append(chatListController)
 
         // MARK: - MQGram
-        #if canImport(MQAI)
-        let aiController = MQAIController()
-        controllers.append(aiController)
-        #endif
+        // AI tab removed by user request — the MQAI module stays linked
+        // (so the rest of the codebase compiles), but the controller is no
+        // longer instantiated nor inserted into the tab bar.
         // MARK: - End MQGram
 
         var restoreSettignsController: (ViewController & SettingsController)?
@@ -258,9 +257,8 @@ public final class TelegramRootController: NavigationController, TelegramRootCon
         controllers.append(accountSettingsController)
                 
         // MARK: - MQGram
-        // After inserting the AI tab between Chats and Settings the
-        // "second-to-last" position no longer points at Chats, so we use the
-        // chat list controller's own index as the default selection.
+        // AI tab is hidden, so the second-to-last position again points at
+        // the chat list — fall back to it if we can't locate the controller.
         let chatListIndex = controllers.firstIndex(where: { $0 === chatListController }) ?? max(0, controllers.count - 2)
         tabBarController.setControllers(controllers, selectedIndex: restoreSettignsController != nil ? (controllers.count - 1) : chatListIndex)
         // MARK: - End MQGram
@@ -270,9 +268,7 @@ public final class TelegramRootController: NavigationController, TelegramRootCon
         self.chatListController = chatListController
         self.accountSettingsController = accountSettingsController
         // MARK: - MQGram
-        #if canImport(MQAI)
-        self.aiController = aiController
-        #endif
+        // AI tab is hidden — self.aiController stays nil.
         // MARK: - End MQGram
         self.rootTabController = tabBarController
         self.pushViewController(tabBarController, animated: false)
@@ -291,11 +287,7 @@ public final class TelegramRootController: NavigationController, TelegramRootCon
         }
         controllers.append(self.chatListController!)
         // MARK: - MQGram
-        #if canImport(MQAI)
-        if let aiController = self.aiController {
-            controllers.append(aiController)
-        }
-        #endif
+        // AI tab is hidden — do not append the MQAI controller.
         // MARK: - End MQGram
         controllers.append(self.accountSettingsController!)
         
