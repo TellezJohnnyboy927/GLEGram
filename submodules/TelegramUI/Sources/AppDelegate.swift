@@ -438,7 +438,24 @@ private func extractAccountManagerState(records: AccountRecordsView<TelegramAcco
         }
         self.window = window
         self.nativeWindow = window
-        
+
+        // MARK: - MQGram
+        // Make the window key+visible as soon as it has a rootViewController and a
+        // background color, BEFORE any guard / early-bail path in
+        // didFinishLaunchingWithOptions runs. Several setup steps below
+        // (App Group container lookup, write-ability test, etc.) can call
+        // `self.mainWindow?.presentNative(...)` and `return true`. If the
+        // window is not yet key+visible at that point, the alert silently
+        // never appears and the user just sees a permanent black screen on
+        // launch instead of a meaningful error.
+        //
+        // The rootViewController was already attached inside
+        // `nativeWindowHostView()` and `hostView.containerView.backgroundColor`
+        // was just set above, so the transition from the launch screen to our
+        // (empty) window is visually consistent with the rest of startup.
+        window.makeKeyAndVisible()
+        // MARK: - End MQGram
+
         hostView.containerView.layer.addSublayer(MetalEngine.shared.rootLayer)
         
         if !UIDevice.current.isBatteryMonitoringEnabled {
@@ -670,7 +687,22 @@ private func extractAccountManagerState(records: AccountRecordsView<TelegramAcco
         }, autolockDeadine: autolockDeadine, encryptionProvider: OpenSSLEncryptionProvider(), deviceModelName: nil, useBetaFeatures: !buildConfig.isAppStoreBuild, isICloudEnabled: buildConfig.isICloudEnabled)
         
         guard let appGroupUrl = maybeAppGroupUrl else {
-            self.mainWindow?.presentNative(UIAlertController(title: nil, message: "Error 2", preferredStyle: .alert))
+            // MARK: - MQGram
+            // The sandbox fallback above means this branch should normally be
+            // unreachable. If we do somehow get here (e.g. the sandbox
+            // Documents directory could not be created), surface a real,
+            // user-visible alert with retry/quit actions instead of leaving
+            // the user staring at a black screen.
+            let alert = UIAlertController(
+                title: "MQGram",
+                message: "Cannot access App Group container 'group.\(baseAppBundleId)' and sandbox fallback also failed. Reinstall the app or free up storage and try again.",
+                preferredStyle: .alert
+            )
+            alert.addAction(UIAlertAction(title: "Quit", style: .destructive, handler: { _ in
+                preconditionFailure("App Group container unavailable")
+            }))
+            self.mainWindow?.presentNative(alert)
+            // MARK: - End MQGram
             return true
         }
         
