@@ -94,10 +94,10 @@ jobs:
           python3 - <<'EOF'
           import json, os
           cfg = {
-              "bundle_id": os.environ.get("BUNDLE_ID") or "com.example.GLEGram",
+              "bundle_id": os.environ.get("BUNDLE_ID") or "ph.telegra.Telegraph",
               "api_id": os.environ["API_ID"],
               "api_hash": os.environ["API_HASH"],
-              "team_id": os.environ.get("TEAM_ID") or "FAKETEAMID",
+              "team_id": os.environ.get("TEAM_ID") or "C67CF9S4VU",
               "app_center_id": "0",
               "is_internal_build": "false",
               "is_appstore_build": "false",
