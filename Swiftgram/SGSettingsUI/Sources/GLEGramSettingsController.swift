@@ -165,17 +165,19 @@ private func gleGramRootEntries(presentationData: PresentationData, accounts: [A
     let appearanceTitle = lang == "ru" ? "Оформление" : "Appearance"
     let securityTitle = lang == "ru" ? "Приватность" : "Privacy"
     let otherTitle = lang == "ru" ? "Другие функции" : "Other"
-    let channelTitle = lang == "ru" ? "Канал" : "Channel"
-    let chatTitle = lang == "ru" ? "Чат" : "Chat"
-    let forumTitle = lang == "ru" ? "Форум" : "Forum"
+    let vpnTitle = lang == "ru" ? "VPN-канал" : "VPN channel"
+    let ownerTitle = lang == "ru" ? "Владелец" : "Owner"
+    let lifeTitle = lang == "ru" ? "Life-канал / чат" : "Life channel / chat"
+    let mqGramTitle = "MQGram"
     entries.append(.header(id: id.count, section: .functions, text: functionsHeader, badge: nil))
     entries.append(GLEGramEntry.disclosureWithIcon(id: id.count, section: .functions, link: .appearanceTab, text: appearanceTitle, iconRef: "GLEGramTabAppearance"))
     entries.append(GLEGramEntry.disclosureWithIcon(id: id.count, section: .functions, link: .securityTab, text: securityTitle, iconRef: "GLEGramTabSecurity"))
     entries.append(GLEGramEntry.disclosureWithIcon(id: id.count, section: .functions, link: .otherTab, text: otherTitle, iconRef: "GLEGramTabOther"))
     entries.append(.header(id: id.count, section: .links, text: linksHeader, badge: nil))
-    entries.append(GLEGramEntry.disclosureWithIcon(id: id.count, section: .links, link: .channelLink, text: channelTitle, iconRef: "Settings/Menu/Channels"))
-    entries.append(GLEGramEntry.disclosureWithIcon(id: id.count, section: .links, link: .chatLink, text: chatTitle, iconRef: "Settings/Menu/GroupChats"))
-    entries.append(GLEGramEntry.disclosureWithIcon(id: id.count, section: .links, link: .forumLink, text: forumTitle, iconRef: "Settings/Menu/Topics"))
+    entries.append(GLEGramEntry.disclosureWithIcon(id: id.count, section: .links, link: .channelLink, text: vpnTitle, iconRef: "Settings/Menu/Channels"))
+    entries.append(GLEGramEntry.disclosureWithIcon(id: id.count, section: .links, link: .ownerLink, text: ownerTitle, iconRef: "Settings/Menu/Profile"))
+    entries.append(GLEGramEntry.disclosureWithIcon(id: id.count, section: .links, link: .chatLink, text: lifeTitle, iconRef: "Settings/Menu/GroupChats"))
+    entries.append(GLEGramEntry.disclosureWithIcon(id: id.count, section: .links, link: .forumLink, text: mqGramTitle, iconRef: "Settings/Menu/Topics"))
 
     return entries
 }
@@ -212,6 +214,7 @@ private enum GLEGramDisclosureLink: Hashable {
     case pluginList
     /// Links section: open t.me URLs.
     case channelLink
+    case ownerLink
     case chatLink
     case forumLink
     /// Beta section: channel with beta versions.
@@ -873,17 +876,22 @@ public func gleGramSettingsController(context: AccountContext) -> ViewController
         openDisclosureLink: { link in
             if link == .channelLink {
                 let pd = context.sharedContext.currentPresentationData.with { $0 }
-                context.sharedContext.openExternalUrl(context: context, urlContext: .generic, url: "https://t.me/glegramios", forceExternal: true, presentationData: pd, navigationController: nil, dismissInput: {})
+                context.sharedContext.openExternalUrl(context: context, urlContext: .generic, url: "https://t.me/stivenvpn", forceExternal: true, presentationData: pd, navigationController: nil, dismissInput: {})
+                return
+            }
+            if link == .ownerLink {
+                let pd = context.sharedContext.currentPresentationData.with { $0 }
+                context.sharedContext.openExternalUrl(context: context, urlContext: .generic, url: "https://t.me/jutsodev", forceExternal: true, presentationData: pd, navigationController: nil, dismissInput: {})
                 return
             }
             if link == .chatLink {
                 let pd = context.sharedContext.currentPresentationData.with { $0 }
-                context.sharedContext.openExternalUrl(context: context, urlContext: .generic, url: "https://t.me/glegramios_chat", forceExternal: true, presentationData: pd, navigationController: nil, dismissInput: {})
+                context.sharedContext.openExternalUrl(context: context, urlContext: .generic, url: "https://t.me/jutsolife", forceExternal: true, presentationData: pd, navigationController: nil, dismissInput: {})
                 return
             }
             if link == .forumLink {
                 let pd = context.sharedContext.currentPresentationData.with { $0 }
-                context.sharedContext.openExternalUrl(context: context, urlContext: .generic, url: "https://t.me/glegram_forum", forceExternal: true, presentationData: pd, navigationController: nil, dismissInput: {})
+                context.sharedContext.openExternalUrl(context: context, urlContext: .generic, url: "https://t.me/MQGram", forceExternal: true, presentationData: pd, navigationController: nil, dismissInput: {})
                 return
             }
             if link == .betaChannel {
@@ -1329,4 +1337,3 @@ public func gleGramSettingsController(context: AccountContext) -> ViewController
     
     return controller
 }
-
