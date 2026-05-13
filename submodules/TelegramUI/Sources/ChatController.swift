@@ -7213,7 +7213,7 @@ public final class ChatControllerImpl: TelegramBaseController, ChatController, G
             if case let .peer(peerId) = self.chatLocation, self.screenCaptureManager == nil {
                 if peerId.namespace == Namespaces.Peer.SecretChat {
                     self.screenCaptureManager = ScreenCaptureDetectionManager(check: { [weak self] in
-                        // MARK: - GLEGram - Block screenshot detection if disabled
+                        // MARK: - MQGram - Block screenshot detection if disabled
                         #if canImport(SGSimpleSettings)
                         if SGSimpleSettings.shared.disableScreenshotDetection {
                             return false
@@ -8508,6 +8508,15 @@ public final class ChatControllerImpl: TelegramBaseController, ChatController, G
         guard let peerId = self.chatLocation.peerId else {
             return
         }
+        
+        // MARK: - MQGram — Mark peer as sent for readAfterAction, then flush pending read index
+        let mqPeerNamespace = peerId.namespace._internalGetInt32Value()
+        let mqPeerId = peerId.id._internalGetInt64Value()
+        if SGSimpleSettings.shared.readAfterAction &&
+            !SGSimpleSettings.shared.shouldBlockMessageReadReceipt(peerIdNamespace: mqPeerNamespace, peerIdId: mqPeerId) {
+            SGSimpleSettings.shared.markPeerAsSentForReadAfterAction(peerIdNamespace: mqPeerNamespace, peerIdId: mqPeerId)
+        }
+        // MARK: - End MQGram
         
         let _ = (self.shouldDivertMessagesToScheduled(messages: messages)
         |> deliverOnMainQueue).startStandalone(next: { [weak self] shouldDivert in

@@ -12,11 +12,26 @@ final class PeerInfoScreenSelectableBackgroundNode: ASDisplayNode {
     
     private var isHighlighted: Bool = false
     
+    // MARK: - MQGram
+    private var longPressRecognizer: UILongPressGestureRecognizer?
+    // MARK: - End MQGram
+    
     var pressed: (() -> Void)? {
         didSet {
-            self.button.isUserInteractionEnabled = self.pressed != nil
+            self.updateInteractionEnabled()
         }
     }
+    
+    // MARK: - MQGram
+    /// Optional long-press action. When set, a 2-second long-press on the
+    /// background fires `longPressed`. Used for the hidden Swiftgram entry.
+    var longPressed: (() -> Void)? {
+        didSet {
+            self.updateInteractionEnabled()
+            self.updateLongPressRecognizer()
+        }
+    }
+    // MARK: - End MQGram
     
     init(bringToFrontForHighlight: @escaping () -> Void) {
         self.bringToFrontForHighlight = bringToFrontForHighlight
@@ -42,6 +57,33 @@ final class PeerInfoScreenSelectableBackgroundNode: ASDisplayNode {
     @objc private func buttonPressed() {
         self.pressed?()
     }
+    
+    // MARK: - MQGram
+    private func updateInteractionEnabled() {
+        self.button.isUserInteractionEnabled = self.pressed != nil || self.longPressed != nil
+    }
+    
+    private func updateLongPressRecognizer() {
+        if self.longPressed != nil {
+            if self.longPressRecognizer == nil {
+                let recognizer = UILongPressGestureRecognizer(target: self, action: #selector(self.handleLongPress(_:)))
+                recognizer.minimumPressDuration = 2.0
+                recognizer.cancelsTouchesInView = true
+                self.button.addGestureRecognizer(recognizer)
+                self.longPressRecognizer = recognizer
+            }
+        } else if let recognizer = self.longPressRecognizer {
+            self.button.removeGestureRecognizer(recognizer)
+            self.longPressRecognizer = nil
+        }
+    }
+    
+    @objc private func handleLongPress(_ recognizer: UILongPressGestureRecognizer) {
+        if recognizer.state == .began {
+            self.longPressed?()
+        }
+    }
+    // MARK: - End MQGram
     
     func updateIsHighlighted(_ isHighlighted: Bool) {
         if self.isHighlighted != isHighlighted {

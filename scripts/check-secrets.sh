@@ -14,20 +14,20 @@ if grep -rq "V1wmSaHPBtfwGR7jHozwSkRVQrUVtvUMkb\|QpU3hDanhmp67LDTzL2tjzDuG4qIsCI
     FOUND=1
 fi
 
-# GLEGram API credentials
+# MQGram API credentials
 if grep -rq "31339208\|b7917b274453f075e114f2fef86230d2" . --include="*.swift" --include="*.json" --include="*.bzl" 2>/dev/null; then
-    echo "FAIL: GLEGram API credentials found!"
+    echo "FAIL: MQGram API credentials found!"
     FOUND=1
 fi
 
 # Team ID
 if grep -rq "F8A8NWPL78" . --include="*.swift" --include="*.json" --include="*.bzl" 2>/dev/null; then
-    echo "FAIL: GLEGram Team ID found!"
+    echo "FAIL: MQGram Team ID found!"
     FOUND=1
 fi
 
 # HMAC salt
-if grep -rq "glegram-hmac-v1" . --include="*.swift" 2>/dev/null; then
+if grep -rq "mqgram-hmac-v1" . --include="*.swift" 2>/dev/null; then
     echo "FAIL: HMAC salt found!"
     FOUND=1
 fi
@@ -35,7 +35,7 @@ fi
 # SSL pinning hashes
 if grep -rq "brDmHiqwkhgPrFDmkcD2IsDUdKLZlyGjGkn0SOGNKFI" . --include="*.swift" --include="*.json" 2>/dev/null; then
 # HMAC salt
-if grep -rq "glegram-hmac-v1" . --include="*.swift" 2>/dev/null; then
+if grep -rq "mqgram-hmac-v1" . --include="*.swift" 2>/dev/null; then
     echo "FAIL: HMAC salt found!"
     FOUND=1
 fi
@@ -44,9 +44,9 @@ fi
     FOUND=1
 fi
 
-# glegram.site in code (not comments)
-if grep -rn "glegram.site" . --include="*.swift" --include="*.json" 2>/dev/null | grep -v "//\|/\*\|e\.g\.\|example" | grep -q .; then
-    echo "FAIL: glegram.site domain in code (not comment)!"
+# mqgram.site in code (not comments)
+if grep -rn "mqgram.site" . --include="*.swift" --include="*.json" 2>/dev/null | grep -v "//\|/\*\|e\.g\.\|example" | grep -q .; then
+    echo "FAIL: mqgram.site domain in code (not comment)!"
     FOUND=1
 fi
 

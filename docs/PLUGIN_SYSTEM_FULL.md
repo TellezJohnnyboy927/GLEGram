@@ -1,12 +1,12 @@
-# GLEGram: полная реализация JS-плагинов (Swiftgram)
+# MQGram: полная реализация JS-плагинов (Swiftgram)
 
-Документ содержит **полные исходные тексты** всех Swift-файлов в **Swiftgram**, которые относятся к системе плагинов: хуки, мост `PluginHost`, загрузчик `JavaScriptCore`, хранение в `SimpleSettings`, экраны списка/редактора/настроек плагина, строка списка плагинов, интеграция в GLEGram/SG settings.
+Документ содержит **полные исходные тексты** всех Swift-файлов в **Swiftgram**, которые относятся к системе плагинов: хуки, мост `PluginHost`, загрузчик `JavaScriptCore`, хранение в `SimpleSettings`, экраны списка/редактора/настроек плагина, строка списка плагинов, интеграция в MQGram/SG settings.
 
 Интеграция в **Telegram UI** (`submodules/TelegramUI`) — отдельный файл **`PLUGIN_SYSTEM_TELEGRAM_FULL.md`** (там все места, где вызываются `SGPluginHooks`, `PluginHost`, `PluginRunner`, `pluginsJavaScriptBridgeActive`).
 
 ## Оглавление (Swiftgram, этот файл)
 
-1. `Swiftgram/SGSimpleSettings/Sources/GLEGramFeatures.swift`
+1. `Swiftgram/SGSimpleSettings/Sources/MQGramFeatures.swift`
 2. `Swiftgram/SGSimpleSettings/Sources/PluginHooks.swift`
 3. `Swiftgram/SGSimpleSettings/Sources/PluginHost.swift`
 4. `Swiftgram/SGSimpleSettings/Sources/SimpleSettings.swift`
@@ -19,7 +19,7 @@
 11. `Swiftgram/SGSettingsUI/Sources/PluginInstallPopupController.swift`
 12. `Swiftgram/SGSettingsUI/Sources/PluginSettingsController.swift`
 13. `Swiftgram/SGSettingsUI/Sources/PluginRunner.swift`
-14. `Swiftgram/SGSettingsUI/Sources/GLEGramSettingsController.swift`
+14. `Swiftgram/SGSettingsUI/Sources/MQGramSettingsController.swift`
 15. `Swiftgram/SGSettingsUI/Sources/SGSettingsController.swift`
 
 ---
@@ -28,13 +28,13 @@
 
 
 
-### `Swiftgram/SGSimpleSettings/Sources/GLEGramFeatures.swift`
+### `Swiftgram/SGSimpleSettings/Sources/MQGramFeatures.swift`
 
 ```swift
 import Foundation
 
-/// Глобальные флаги функций GLEGram (Swiftgram).
-public enum GLEGramFeatures {
+/// Глобальные флаги функций MQGram (Swiftgram).
+public enum MQGramFeatures {
     /// Мастер-переключатель JS-плагинов отключён: без `PluginRunner`, без хуков в чате (меньше нагрузка и зависаний).
     public static let pluginsEnabled = true
 }
@@ -44,7 +44,7 @@ public enum GLEGramFeatures {
 ### `Swiftgram/SGSimpleSettings/Sources/PluginHooks.swift`
 
 ```swift
-// MARK: GLEGram – Plugin hooks (simplified, Ghostgram-style API)
+// MARK: MQGram – Plugin hooks (simplified, Ghostgram-style API)
 import Foundation
 
 // MARK: - Outgoing message intercept
@@ -205,8 +205,8 @@ public struct ReplyMessageInfo: Sendable {
 ### `Swiftgram/SGSimpleSettings/Sources/PluginHost.swift`
 
 ```swift
-// MARK: GLEGram – Plugin host (callbacks from plugins into iOS UI)
-// Ghostgram-style API: GLEGram.ui, GLEGram.compose, GLEGram.chat, GLEGram.network, etc.
+// MARK: MQGram – Plugin host (callbacks from plugins into iOS UI)
+// Ghostgram-style API: MQGram.ui, MQGram.compose, MQGram.chat, MQGram.network, etc.
 
 import Foundation
 
@@ -221,7 +221,7 @@ public enum PluginBulletinType {
 public final class PluginHost {
     public static let shared = PluginHost()
 
-    // MARK: - GLEGram.ui
+    // MARK: - MQGram.ui
 
     /// Show alert (title, message).
     public var showAlert: ((String, String) -> Void)?
@@ -250,7 +250,7 @@ public final class PluginHost {
     /// Simple toast (falls back to bulletin with .info).
     public var showToast: ((String) -> Void)?
 
-    // MARK: - GLEGram.compose
+    // MARK: - MQGram.compose
 
     /// Get text from current chat input field.
     public var getInputText: (() -> String)?
@@ -267,7 +267,7 @@ public final class PluginHost {
     /// Register callback for message submit (called before sending).
     public var onSubmitCallback: ((@escaping (String) -> Void) -> Void)?
 
-    // MARK: - GLEGram.chat
+    // MARK: - MQGram.chat
 
     /// Returns (accountId, peerId) of currently open chat, or nil.
     public var getCurrentChat: (() -> (accountId: Int64, peerId: Int64)?)?
@@ -284,7 +284,7 @@ public final class PluginHost {
     /// Delete message: (accountId, peerId, messageId).
     public var deleteMessage: ((Int64, Int64, Int64) -> Void)?
 
-    // MARK: - GLEGram.network
+    // MARK: - MQGram.network
 
     /// Fetch URL: (url, method, headers, body, callback(error?, responseString?)).
     public var fetch: ((String, String, [String: String]?, String?, @escaping (String?, String?) -> Void) -> Void)?
@@ -294,7 +294,7 @@ public final class PluginHost {
     public var runOnMain: ((@escaping () -> Void) -> Void)?
     public var runOnBackground: ((@escaping () -> Void) -> Void)?
 
-    // MARK: - GLEGram.settings (per-plugin storage)
+    // MARK: - MQGram.settings (per-plugin storage)
 
     private let pluginSettingsPrefix = "sg_plugin_"
 
@@ -729,7 +729,7 @@ public class SGSimpleSettings {
         case pinnedCustomProfileGiftSlugs
         case localProfileGiftStatusFileId
         case hookInspectorEnabled
-        /// Square ↔ circle avatar rounding (GLEGram appearance).
+        /// Square ↔ circle avatar rounding (MQGram appearance).
         case customAvatarRoundingEnabled
         case avatarRoundingPercent
         /// Title for self-chat (Saved / My notes): default | displayName | username | custom
@@ -737,7 +737,7 @@ public class SGSimpleSettings {
         case selfChatTitleCustomText
         /// Face blur in video messages (Vision framework).
         case faceBlurInVideoMessages
-        /// Experimental: Puter-style voice conversion (see GLEGram Privacy). Processing not wired to send/calls in this build.
+        /// Experimental: Puter-style voice conversion (see MQGram Privacy). Processing not wired to send/calls in this build.
         case voiceChangerEnabled
         case puterVoiceChangerVoiceId
     }
@@ -874,7 +874,7 @@ public class SGSimpleSettings {
         Keys.duckyAppIconAvailable.rawValue: true,
         Keys.transcriptionBackend.rawValue: TranscriptionBackend.default.rawValue,
         Keys.translationBackend.rawValue: TranslationBackend.default.rawValue,
-        // Default app badge (GLEGram Dark Purple)
+        // Default app badge (MQGram Dark Purple)
         Keys.customAppBadge.rawValue: "SkyAppBadge",
         Keys.canUseNY.rawValue: false,
         Keys.nyStyle.rawValue: NYStyle.default.rawValue,
@@ -1423,9 +1423,9 @@ public class SGSimpleSettings {
         return false
     }
 
-    /// Включён мастер «Plugin system» или в списке есть активный `.js` — нужно вешать `PluginHost` в чате и хуки. Учитывает `GLEGramFeatures.pluginsEnabled`.
+    /// Включён мастер «Plugin system» или в списке есть активный `.js` — нужно вешать `PluginHost` в чате и хуки. Учитывает `MQGramFeatures.pluginsEnabled`.
     public var pluginsJavaScriptBridgeActive: Bool {
-        guard GLEGramFeatures.pluginsEnabled else { return false }
+        guard MQGramFeatures.pluginsEnabled else { return false }
         return pluginSystemEnabled || hasEnabledJavaScriptPluginInstalled
     }
     
@@ -1719,7 +1719,7 @@ public func sgUseShortAllChatsTitle(_ default: Bool) -> Bool {
     }
 }
 
-// MARK: - GLEGram settings backup (export / import JSON)
+// MARK: - MQGram settings backup (export / import JSON)
 
 public extension SGSimpleSettings {
     /// Must match `@UserDefault(..., userDefaults: UserDefaults(suiteName: APP_GROUP_IDENTIFIER))` properties.
@@ -1732,7 +1732,7 @@ public extension SGSimpleSettings {
     ]
 
     /// Writes a JSON file to the temp directory; use with document picker “export”.
-    static func exportGLEGramSettingsJSONFile() throws -> URL {
+    static func exportMQGramSettingsJSONFile() throws -> URL {
         var entries: [String: Any] = [:]
         let standard = UserDefaults.standard
         let group = UserDefaults(suiteName: APP_GROUP_IDENTIFIER)
@@ -1750,14 +1750,14 @@ public extension SGSimpleSettings {
             "entries": entries
         ]
         let data = try JSONSerialization.data(withJSONObject: root, options: [.prettyPrinted, .sortedKeys])
-        let url = FileManager.default.temporaryDirectory.appendingPathComponent("GLEGram_settings.json")
+        let url = FileManager.default.temporaryDirectory.appendingPathComponent("MQGram_settings.json")
         try data.write(to: url, options: .atomic)
         return url
     }
 
     /// Applies keys from exported JSON; returns number of keys written.
     @discardableResult
-    static func importGLEGramSettingsJSON(data: Data) throws -> Int {
+    static func importMQGramSettingsJSON(data: Data) throws -> Int {
         let json = try JSONSerialization.jsonObject(with: data)
         let entries: [String: Any]
         if let root = json as? [String: Any] {
@@ -1766,10 +1766,10 @@ public extension SGSimpleSettings {
             } else if root["format"] == nil, root.keys.contains(where: { Keys(rawValue: $0) != nil }) {
                 entries = root
             } else {
-                throw NSError(domain: "SGSimpleSettings", code: 2, userInfo: [NSLocalizedDescriptionKey: "Invalid GLEGram settings file"])
+                throw NSError(domain: "SGSimpleSettings", code: 2, userInfo: [NSLocalizedDescriptionKey: "Invalid MQGram settings file"])
             }
         } else {
-            throw NSError(domain: "SGSimpleSettings", code: 2, userInfo: [NSLocalizedDescriptionKey: "Invalid GLEGram settings file"])
+            throw NSError(domain: "SGSimpleSettings", code: 2, userInfo: [NSLocalizedDescriptionKey: "Invalid MQGram settings file"])
         }
         let standard = UserDefaults.standard
         let group = UserDefaults(suiteName: APP_GROUP_IDENTIFIER)
@@ -1806,11 +1806,11 @@ public extension SGSimpleSettings {
 public extension Notification.Name {
     /// Posted when “Hide Proxy Sponsor” is toggled so the chat list can refresh.
     static let sgHideProxySponsorDidChange = Notification.Name("SGHideProxySponsorDidChange")
-    /// Posted when GLEGram avatar rounding toggle or slider changes.
+    /// Posted when MQGram avatar rounding toggle or slider changes.
     static let sgAvatarRoundingSettingsDidChange = Notification.Name("SGAvatarRoundingSettingsDidChange")
     /// Posted when main chats list title mode or custom text changes (root «Чаты» / Chats).
     static let sgSelfChatTitleSettingsDidChange = Notification.Name("SGSelfChatTitleSettingsDidChange")
-    /// Posted when profile full-screen color or related GLEGram appearance toggles change (refresh Peer Info).
+    /// Posted when profile full-screen color or related MQGram appearance toggles change (refresh Peer Info).
     static let sgPeerInfoAppearanceSettingsDidChange = Notification.Name("SGPeerInfoAppearanceSettingsDidChange")
     /// Posted when «Local Telegram Premium» is toggled so `AccountContext.isPremium` can refresh.
     static let sgEnableLocalPremiumDidChange = Notification.Name("SGEnableLocalPremiumDidChange")
@@ -1939,7 +1939,7 @@ public enum PluginMetadataParser {
             || content.range(of: settingsFlagPattern, options: .regularExpression) != nil
     }
     
-    /// Parses metadata from a JavaScript plugin file (GLEGram JS plugin format).
+    /// Parses metadata from a JavaScript plugin file (MQGram JS plugin format).
     /// Expects a global object: Plugin = { id?, name, author?, version?, description? } (single or double quotes).
     public static func parseJavaScript(content: String) -> PluginMetadata? {
         let idPattern = #"(?:["']id["']|\bid)\s*:\s*["']([^"']*)["']"#
@@ -2629,7 +2629,7 @@ private final class PluginDocumentPickerDelegate: NSObject, UIDocumentPickerDele
 ### `Swiftgram/SGSettingsUI/Sources/PluginCodeEditorController.swift`
 
 ```swift
-// MARK: GLEGram – Plugin code editor (create/edit JS plugins inline)
+// MARK: MQGram – Plugin code editor (create/edit JS plugins inline)
 import Foundation
 import UIKit
 import Display
@@ -2745,8 +2745,8 @@ private func pluginCodeEditorEntries(state: PluginCodeEditorState, presentationD
     entries.append(.nameInput(id: 0, text: state.name, placeholder: lang == "ru" ? "Имя плагина" : "Plugin name"))
     entries.append(.codeInput(id: 1, text: state.code, placeholder: lang == "ru" ? "JavaScript код..." : "JavaScript code..."))
     let noticeText = lang == "ru"
-        ? "Используйте GLEGram.ui, GLEGram.chat, GLEGram.compose, GLEGram.messageActions, GLEGram.intercept, GLEGram.network, GLEGram.settings, GLEGram.events API."
-        : "Use GLEGram.ui, GLEGram.chat, GLEGram.compose, GLEGram.messageActions, GLEGram.intercept, GLEGram.network, GLEGram.settings, GLEGram.events API."
+        ? "Используйте MQGram.ui, MQGram.chat, MQGram.compose, MQGram.messageActions, MQGram.intercept, MQGram.network, MQGram.settings, MQGram.events API."
+        : "Use MQGram.ui, MQGram.chat, MQGram.compose, MQGram.messageActions, MQGram.intercept, MQGram.network, MQGram.settings, MQGram.events API."
     entries.append(.notice(id: 2, text: noticeText))
     return entries
 }
@@ -3434,7 +3434,7 @@ public func PluginSettingsController(context: AccountContext, plugin: PluginInfo
 ### `Swiftgram/SGSettingsUI/Sources/PluginRunner.swift`
 
 ```swift
-// MARK: GLEGram – JavaScript plugin runner (Ghostgram-style GLEGram.* API)
+// MARK: MQGram – JavaScript plugin runner (Ghostgram-style MQGram.* API)
 import Foundation
 @preconcurrency import JavaScriptCore
 import UIKit
@@ -3464,7 +3464,7 @@ private final class JSPluginState {
 // MARK: - JS Bridge (Swift ↔ JavaScript)
 
 /// JSExport protocol — all methods listed here are exposed to the JS runtime.
-@objc private protocol GLEGramJSBridgeExport: JSExport {
+@objc private protocol MQGramJSBridgeExport: JSExport {
     // ui
     func uiAlert(_ title: String, _ message: String)
     func uiPrompt(_ title: String, _ placeholder: String, _ callback: JSValue)
@@ -3503,12 +3503,12 @@ private final class JSPluginState {
     func uiShare(_ text: String)
 }
 
-/// Bridge object exposed to JS as `_bridge`. All GLEGram.* methods call through here.
-private final class GLEGramJSBridge: NSObject, GLEGramJSBridgeExport {
+/// Bridge object exposed to JS as `_bridge`. All MQGram.* methods call through here.
+private final class MQGramJSBridge: NSObject, MQGramJSBridgeExport {
     @objc var pluginId: String = ""
     weak var runner: PluginRunner?
 
-    // MARK: GLEGram.ui
+    // MARK: MQGram.ui
     @objc func uiAlert(_ title: String, _ message: String) {
         DispatchQueue.main.asyncAfter(deadline: .now() + 0.1) {
             if let show = PluginHost.shared.showAlert {
@@ -3616,7 +3616,7 @@ private final class GLEGramJSBridge: NSObject, GLEGramJSBridgeExport {
         }
     }
 
-    // MARK: GLEGram.compose
+    // MARK: MQGram.compose
     @objc func composeGetText() -> String {
         return PluginHost.shared.getInputText?() ?? ""
     }
@@ -3644,13 +3644,13 @@ private final class GLEGramJSBridge: NSObject, GLEGramJSBridgeExport {
         runner?.setOnSubmitCallback(pluginId: pluginId, callback: callback)
     }
 
-    // MARK: GLEGram.messageActions
+    // MARK: MQGram.messageActions
     @objc func messageActionsAddItem(_ title: String, _ callback: JSValue) {
         guard !pluginId.isEmpty, !callback.isUndefined, !callback.isNull else { return }
         runner?.addChatMenuItem(pluginId: pluginId, title: title, callback: callback)
     }
 
-    // MARK: GLEGram.intercept
+    // MARK: MQGram.intercept
     @objc func interceptOutgoing(_ callback: JSValue) {
         guard !pluginId.isEmpty else { return }
         runner?.setOnOutgoingMessage(pluginId: pluginId, callback: callback)
@@ -3661,7 +3661,7 @@ private final class GLEGramJSBridge: NSObject, GLEGramJSBridgeExport {
         runner?.setOnIncomingMessage(pluginId: pluginId, callback: callback)
     }
 
-    // MARK: GLEGram.network
+    // MARK: MQGram.network
     @objc func networkFetch(_ url: String, _ opts: NSDictionary, _ callback: JSValue) {
         let method = opts["method"] as? String ?? "GET"
         let headers = opts["headers"] as? [String: String]
@@ -3677,7 +3677,7 @@ private final class GLEGramJSBridge: NSObject, GLEGramJSBridgeExport {
         }
     }
 
-    // MARK: GLEGram.chat
+    // MARK: MQGram.chat
     @objc func chatGetActive() -> NSDictionary? {
         guard let chat = PluginHost.shared.getCurrentChat?() else { return nil }
         return ["accountId": NSNumber(value: chat.accountId), "peerId": NSNumber(value: chat.peerId)]
@@ -3698,13 +3698,13 @@ private final class GLEGramJSBridge: NSObject, GLEGramJSBridgeExport {
         PluginHost.shared.deleteMessage?(chat.accountId, peerId, msgId)
     }
 
-    // MARK: GLEGram.peerProfile
+    // MARK: MQGram.peerProfile
     @objc func profileAddAction(_ title: String, _ callback: JSValue) {
         guard !pluginId.isEmpty, !callback.isUndefined, !callback.isNull else { return }
         runner?.addProfileMenuItem(pluginId: pluginId, title: title, callback: callback)
     }
 
-    // MARK: GLEGram.settings
+    // MARK: MQGram.settings
     @objc func settingsAddItem(_ section: String, _ title: String, _ actionId: String, _ callback: JSValue) {
         guard !pluginId.isEmpty, !callback.isUndefined, !callback.isNull else { return }
         runner?.addSettingsItem(pluginId: pluginId, section: section, title: title, actionId: actionId, callback: callback)
@@ -3720,7 +3720,7 @@ private final class GLEGramJSBridge: NSObject, GLEGramJSBridgeExport {
         PluginHost.shared.setPluginSetting(pluginId: pluginId, key: key, value: value)
     }
 
-    // MARK: GLEGram.events
+    // MARK: MQGram.events
     @objc func eventsOn(_ name: String, _ callback: JSValue) {
         guard !pluginId.isEmpty, !callback.isUndefined, !callback.isNull else { return }
         runner?.addEventListener(pluginId: pluginId, eventName: name, callback: callback)
@@ -3738,21 +3738,21 @@ private final class GLEGramJSBridge: NSObject, GLEGramJSBridgeExport {
 public final class PluginRunner {
     public static let shared = PluginRunner()
 
-    private let queue = DispatchQueue(label: "GLEGramPluginRunner", qos: .userInitiated)
+    private let queue = DispatchQueue(label: "MQGramPluginRunner", qos: .userInitiated)
     private var loadedPlugins: [String: JSPluginState] = [:]
     private let lock = NSLock()
     private let loadLock = NSLock()
     private static var incomingMessageObserver: NSObjectProtocol?
     private static var technicalEventObserver: NSObjectProtocol?
 
-    // MARK: - Bootstrap Script (GLEGram.* API)
+    // MARK: - Bootstrap Script (MQGram.* API)
 
     private static let bootstrapScript = """
     (function() {
-        if (typeof GLEGram !== 'undefined') return;
+        if (typeof MQGram !== 'undefined') return;
         var b = (typeof _bridge !== 'undefined') ? _bridge : null;
         function s(v) { return v != null ? String(v) : ''; }
-        GLEGram = {
+        MQGram = {
             ui: {
                 alert: function(title, msg) { if (b && b.uiAlert) b.uiAlert(s(title), s(msg)); },
                 prompt: function(title, placeholder, cb) { if (b && b.uiPrompt && cb) b.uiPrompt(s(title), s(placeholder), cb); },
@@ -3810,7 +3810,7 @@ public final class PluginRunner {
     }
 
     private func ensureLoadedSync() {
-        guard GLEGramFeatures.pluginsEnabled else {
+        guard MQGramFeatures.pluginsEnabled else {
             shutdown()
             return
         }
@@ -3842,7 +3842,7 @@ public final class PluginRunner {
 
     /// Load a single plugin. Shows alert on success if showNotification is true.
     private func loadPluginSync(id: String, path: String, name: String, showNotification: Bool = true) {
-        guard GLEGramFeatures.pluginsEnabled else { return }
+        guard MQGramFeatures.pluginsEnabled else { return }
         guard (path as NSString).pathExtension.lowercased() == "js" else { return }
 
         // Resolve path: try disk first, then bundle
@@ -3853,7 +3853,7 @@ public final class PluginRunner {
             }
         }
         guard let script = try? String(contentsOf: URL(fileURLWithPath: resolvedPath), encoding: .utf8) else {
-            NSLog("[GLEGram PluginRunner] Failed to read: \(path)")
+            NSLog("[MQGram PluginRunner] Failed to read: \(path)")
             return
         }
 
@@ -3865,13 +3865,13 @@ public final class PluginRunner {
         loadedPlugins[id] = state
         lock.unlock()
 
-        let bridge = GLEGramJSBridge()
+        let bridge = MQGramJSBridge()
         bridge.pluginId = id
         bridge.runner = self
         context.setObject(bridge, forKeyedSubscript: "_bridge" as NSString)
         context.exceptionHandler = { _, value in
             if let v = value, !v.isUndefined {
-                NSLog("[GLEGram Plugin %@] JS error: %@", id, v.toString() ?? "")
+                NSLog("[MQGram Plugin %@] JS error: %@", id, v.toString() ?? "")
             }
         }
 
@@ -3879,7 +3879,7 @@ public final class PluginRunner {
         context.exception = nil
         context.evaluateScript(PluginRunner.bootstrapScript)
         if context.exception != nil {
-            NSLog("[GLEGram PluginRunner] Bootstrap error in \(id): \(context.exception!.toString() ?? "")")
+            NSLog("[MQGram PluginRunner] Bootstrap error in \(id): \(context.exception!.toString() ?? "")")
             lock.lock()
             loadedPlugins.removeValue(forKey: id)
             lock.unlock()
@@ -3890,14 +3890,14 @@ public final class PluginRunner {
         context.exception = nil
         context.evaluateScript(script)
         if context.exception != nil {
-            NSLog("[GLEGram PluginRunner] Script error in \(id): \(context.exception!.toString() ?? "")")
+            NSLog("[MQGram PluginRunner] Script error in \(id): \(context.exception!.toString() ?? "")")
             lock.lock()
             loadedPlugins.removeValue(forKey: id)
             lock.unlock()
             return
         }
 
-        NSLog("[GLEGram PluginRunner] Loaded plugin: \(id)")
+        NSLog("[MQGram PluginRunner] Loaded plugin: \(id)")
 
         // Show success alert
         if showNotification {
@@ -3993,7 +3993,7 @@ public final class PluginRunner {
     // MARK: - Hook registration
 
     private func registerAllHooks() {
-        guard GLEGramFeatures.pluginsEnabled else { shutdown(); return }
+        guard MQGramFeatures.pluginsEnabled else { shutdown(); return }
 
         let block = { [weak self] in
             guard let self = self else { return }
@@ -4067,7 +4067,7 @@ public final class PluginRunner {
     // MARK: - Hook execution
 
     public func getChatMenuItems(accountId: Int64, peerId: Int64, messageId: Int64? = nil) -> [PluginChatMenuItem] {
-        guard GLEGramFeatures.pluginsEnabled else { return [] }
+        guard MQGramFeatures.pluginsEnabled else { return [] }
         let msgId = messageId ?? 0
         var items: [PluginChatMenuItem] = []
         lock.lock()
@@ -4087,7 +4087,7 @@ public final class PluginRunner {
     }
 
     public func getProfileMenuItems(accountId: Int64, peerId: Int64) -> [PluginChatMenuItem] {
-        guard GLEGramFeatures.pluginsEnabled else { return [] }
+        guard MQGramFeatures.pluginsEnabled else { return [] }
         var items: [PluginChatMenuItem] = []
         lock.lock()
         for (_, state) in loadedPlugins {
@@ -4117,7 +4117,7 @@ public final class PluginRunner {
         }
     }
 
-    /// Get settings items filtered by section (compatibility with GLEGramSettingsController).
+    /// Get settings items filtered by section (compatibility with MQGramSettingsController).
     public func getSettingsItems(section: String) -> [(pluginId: String, section: String, title: String, actionId: String)] {
         return allSettingsItems().filter { $0.section.lowercased() == section.lowercased() }
     }
@@ -4260,7 +4260,7 @@ public final class PluginRunner {
 
     /// Fire a wg-style hook for compatibility. Fires event with given name for all plugins.
     public func fireWgHook(_ hookName: String, args: [Any]) {
-        guard GLEGramFeatures.pluginsEnabled else { return }
+        guard MQGramFeatures.pluginsEnabled else { return }
         _ = applyEvent(name: hookName, params: ["args": args])
     }
 
@@ -4284,7 +4284,7 @@ public final class PluginRunner {
     }
 }
 
-// MARK: - Public settings items struct (for GLEGramSettingsController compatibility)
+// MARK: - Public settings items struct (for MQGramSettingsController compatibility)
 
 public struct JSPluginSettingsItem {
     public let pluginId: String
@@ -4296,7 +4296,7 @@ public struct JSPluginSettingsItem {
 
 ```
 
-### `Swiftgram/SGSettingsUI/Sources/GLEGramSettingsController.swift`
+### `Swiftgram/SGSettingsUI/Sources/MQGramSettingsController.swift`
 
 ```swift
 // MARK: Swiftgram
@@ -4380,13 +4380,13 @@ private func scaleImageForListIcon(_ image: UIImage, maxSize: CGFloat) -> UIImag
     }
 }
 
-private enum GLEGramTab: Int, CaseIterable {
+private enum MQGramTab: Int, CaseIterable {
     case appearance = 0
     case security
     case other
 }
 
-private enum GLEGramSection: Int32, SGItemListSection {
+private enum MQGramSection: Int32, SGItemListSection {
     case search
     case functions
     case links
@@ -4407,7 +4407,7 @@ private enum GLEGramSection: Int32, SGItemListSection {
     case other
 }
 
-private func tab(for section: GLEGramSection) -> GLEGramTab {
+private func tab(for section: MQGramSection) -> MQGramTab {
     switch section {
     case .search: return .appearance
     case .functions, .links: return .appearance
@@ -4417,7 +4417,7 @@ private func tab(for section: GLEGramSection) -> GLEGramTab {
     }
 }
 
-private func sectionForEntry(_ entry: GLEGramEntry) -> GLEGramSection {
+private func sectionForEntry(_ entry: MQGramEntry) -> MQGramSection {
     switch entry {
     case .header(_, let s, _, _): return s
     case .toggle(_, let s, _, _, _, _): return s
@@ -4436,7 +4436,7 @@ private func sectionForEntry(_ entry: GLEGramEntry) -> GLEGramSection {
     }
 }
 
-private func gleGramEntriesFiltered(by selectedTab: GLEGramTab, entries: [GLEGramEntry]) -> [GLEGramEntry] {
+private func mqGramEntriesFiltered(by selectedTab: MQGramTab, entries: [MQGramEntry]) -> [MQGramEntry] {
     entries.filter { entry in
         let sec = sectionForEntry(entry)
         return sec == .search || tab(for: sec) == selectedTab
@@ -4454,10 +4454,10 @@ private func glegSelfChatTitleModeLabel(_ mode: SelfChatTitleMode, lang: String)
     }
 }
 
-/// Root GLEGram screen: exteraGram-style — header (icon + title + tagline), Функции (4 tabs), Ссылки (Канал, Чат, Форум).
-private func gleGramRootEntries(presentationData: PresentationData) -> [GLEGramEntry] {
+/// Root MQGram screen: exteraGram-style — header (icon + title + tagline), Функции (4 tabs), Ссылки (Канал, Чат, Форум).
+private func mqGramRootEntries(presentationData: PresentationData) -> [MQGramEntry] {
     let lang = presentationData.strings.baseLanguageCode
-    var entries: [GLEGramEntry] = []
+    var entries: [MQGramEntry] = []
     let id = SGItemListCounter()
     let functionsHeader = lang == "ru" ? "ФУНКЦИИ" : "FEATURES"
     let linksHeader = lang == "ru" ? "ССЫЛКИ" : "LINKS"
@@ -4468,39 +4468,39 @@ private func gleGramRootEntries(presentationData: PresentationData) -> [GLEGramE
     let chatTitle = lang == "ru" ? "Чат" : "Chat"
     let forumTitle = lang == "ru" ? "Форум" : "Forum"
     entries.append(.header(id: id.count, section: .functions, text: functionsHeader, badge: nil))
-    entries.append(GLEGramEntry.disclosureWithIcon(id: id.count, section: .functions, link: .appearanceTab, text: appearanceTitle, iconRef: "GLEGramTabAppearance"))
-    entries.append(GLEGramEntry.disclosureWithIcon(id: id.count, section: .functions, link: .securityTab, text: securityTitle, iconRef: "GLEGramTabSecurity"))
-    entries.append(GLEGramEntry.disclosureWithIcon(id: id.count, section: .functions, link: .otherTab, text: otherTitle, iconRef: "GLEGramTabOther"))
-    if GLEGramFeatures.pluginsEnabled {
+    entries.append(MQGramEntry.disclosureWithIcon(id: id.count, section: .functions, link: .appearanceTab, text: appearanceTitle, iconRef: "MQGramTabAppearance"))
+    entries.append(MQGramEntry.disclosureWithIcon(id: id.count, section: .functions, link: .securityTab, text: securityTitle, iconRef: "MQGramTabSecurity"))
+    entries.append(MQGramEntry.disclosureWithIcon(id: id.count, section: .functions, link: .otherTab, text: otherTitle, iconRef: "MQGramTabOther"))
+    if MQGramFeatures.pluginsEnabled {
         let pluginsTitle = lang == "ru" ? "Плагины" : "Plugins"
-        entries.append(GLEGramEntry.disclosureWithIcon(id: id.count, section: .functions, link: .pluginsSettings, text: pluginsTitle, iconRef: "glePlugins/1"))
+        entries.append(MQGramEntry.disclosureWithIcon(id: id.count, section: .functions, link: .pluginsSettings, text: pluginsTitle, iconRef: "glePlugins/1"))
     }
     entries.append(.header(id: id.count, section: .links, text: linksHeader, badge: nil))
-    entries.append(GLEGramEntry.disclosureWithIcon(id: id.count, section: .links, link: .channelLink, text: channelTitle, iconRef: "Settings/Menu/Channels"))
-    entries.append(GLEGramEntry.disclosureWithIcon(id: id.count, section: .links, link: .chatLink, text: chatTitle, iconRef: "Settings/Menu/GroupChats"))
-    entries.append(GLEGramEntry.disclosureWithIcon(id: id.count, section: .links, link: .forumLink, text: forumTitle, iconRef: "Settings/Menu/Topics"))
-    if let status = cachedGLEGramUserStatus(), status.access.betaBuilds, let betaConfig = status.betaConfig, betaConfig.channelUrl != nil {
+    entries.append(MQGramEntry.disclosureWithIcon(id: id.count, section: .links, link: .channelLink, text: channelTitle, iconRef: "Settings/Menu/Channels"))
+    entries.append(MQGramEntry.disclosureWithIcon(id: id.count, section: .links, link: .chatLink, text: chatTitle, iconRef: "Settings/Menu/GroupChats"))
+    entries.append(MQGramEntry.disclosureWithIcon(id: id.count, section: .links, link: .forumLink, text: forumTitle, iconRef: "Settings/Menu/Topics"))
+    if let status = cachedMQGramUserStatus(), status.access.betaBuilds, let betaConfig = status.betaConfig, betaConfig.channelUrl != nil {
         let betaHeader = lang == "ru" ? "БЕТА" : "BETA"
         entries.append(.header(id: id.count, section: .links, text: betaHeader, badge: nil))
         let betaChannelTitle = lang == "ru" ? "Перейти в канал с бета-версиями" : "Go to Beta Channel"
-        entries.append(GLEGramEntry.disclosure(id: id.count, section: .links, link: .betaChannel, text: betaChannelTitle))
+        entries.append(MQGramEntry.disclosure(id: id.count, section: .links, link: .betaChannel, text: betaChannelTitle))
     }
 
     return entries
 }
 
-private enum GLEGramSliderSetting: Hashable {
+private enum MQGramSliderSetting: Hashable {
     case fontReplacementSize
     case ghostModeMessageSendDelay
     case avatarRoundingPercent
 }
 
-private enum GLEGramOneFromManySetting: Hashable {
+private enum MQGramOneFromManySetting: Hashable {
     case onlineStatusRecordingInterval
     case selfChatTitleMode
 }
 
-private enum GLEGramDisclosureLink: Hashable {
+private enum MQGramDisclosureLink: Hashable {
     case fakeLocationPicker
     case tabOrganizer
     case profileCover
@@ -4516,7 +4516,7 @@ private enum GLEGramDisclosureLink: Hashable {
     case savedDeletedMessagesList
     case doubleBottomSettings
     case protectedChatsSettings
-    /// GLEGram root: Plugins list (JS + .plugin).
+    /// MQGram root: Plugins list (JS + .plugin).
     case pluginsSettings
     /// Links section: open t.me URLs.
     case channelLink
@@ -4528,17 +4528,17 @@ private enum GLEGramDisclosureLink: Hashable {
     case voiceChangerVoicePicker
 }
 
-private typealias GLEGramEntry = SGItemListUIEntry<GLEGramSection, SGBoolSetting, GLEGramSliderSetting, GLEGramOneFromManySetting, GLEGramDisclosureLink, AnyHashable>
+private typealias MQGramEntry = SGItemListUIEntry<MQGramSection, SGBoolSetting, MQGramSliderSetting, MQGramOneFromManySetting, MQGramDisclosureLink, AnyHashable>
 
-private struct GLEGramSettingsControllerState: Equatable {
+private struct MQGramSettingsControllerState: Equatable {
     var searchQuery: String?
-    var selectedTab: GLEGramTab = .appearance
+    var selectedTab: MQGramTab = .appearance
 }
 
-private func gleGramEntries(presentationData: PresentationData, contentSettingsConfiguration: ContentSettingsConfiguration?, state: GLEGramSettingsControllerState, mediaBoxBasePath: String) -> [GLEGramEntry] {
+private func mqGramEntries(presentationData: PresentationData, contentSettingsConfiguration: ContentSettingsConfiguration?, state: MQGramSettingsControllerState, mediaBoxBasePath: String) -> [MQGramEntry] {
     let lang = presentationData.strings.baseLanguageCode
     let strings = presentationData.strings
-    var entries: [GLEGramEntry] = []
+    var entries: [MQGramEntry] = []
     let id = SGItemListCounter()
     
     entries.append(.searchInput(id: id.count, section: .search, title: NSAttributedString(string: "🔍"), text: state.searchQuery ?? "", placeholder: strings.Common_Search))
@@ -4661,7 +4661,7 @@ private func gleGramEntries(presentationData: PresentationData, contentSettingsC
     entries.append(.toggle(id: id.count, section: .content, settingName: .disableSecretChatBlurOnScreenshot, value: SGSimpleSettings.shared.disableSecretChatBlurOnScreenshot, text: disableSecretBlurTitle, enabled: true))
     entries.append(.notice(id: id.count, section: .content, text: i18n("DISABLE_SECRET_CHAT_BLUR_ON_SCREENSHOT_SUBTITLE", lang)))
 
-    // MARK: GLEGram — Face blur in video messages
+    // MARK: MQGram — Face blur in video messages
     let faceBlurTitle = lang == "ru" ? "Скрытие лица в видеосообщениях" : "Face blur in video messages"
     entries.append(.toggle(id: id.count, section: .content, settingName: .faceBlurInVideoMessages, value: SGSimpleSettings.shared.faceBlurInVideoMessages, text: faceBlurTitle, enabled: true))
     let faceBlurNotice = lang == "ru" ? "При записи видеосообщения (кружка) ваше лицо будет автоматически заблюрено перед отправкой." : "Your face will be automatically blurred in video messages before sending."
@@ -4795,7 +4795,7 @@ private func gleGramEntries(presentationData: PresentationData, contentSettingsC
     entries.append(.notice(id: id.count, section: .appearance, text: disableZalgoNotice))
 
     // MARK: Other (Другие функции)
-    entries.append(.header(id: id.count, section: .other, text: (lang == "ru" ? "НАСТРОЙКИ GLEGRAM" : "GLEGRAM SETTINGS"), badge: nil))
+    entries.append(.header(id: id.count, section: .other, text: (lang == "ru" ? "НАСТРОЙКИ MQGRAM" : "MQGRAM SETTINGS"), badge: nil))
     entries.append(.action(id: id.count, section: .other, actionType: "glegExportSettings" as AnyHashable, text: (lang == "ru" ? "Экспортировать настройки" : "Export settings"), kind: .generic))
     entries.append(.action(id: id.count, section: .other, actionType: "glegImportSettings" as AnyHashable, text: (lang == "ru" ? "Загрузить настройки" : "Import settings"), kind: .generic))
     entries.append(.notice(id: id.count, section: .other, text: (lang == "ru" ? "JSON с включёнными функциями и значениями. Импорт перезаписывает совпадающие ключи." : "JSON with enabled features and values. Import overwrites matching keys.")))
@@ -4833,7 +4833,7 @@ private func gleGramEntries(presentationData: PresentationData, contentSettingsC
         return trimmed
     }()
     entries.append(.disclosure(id: id.count, section: .other, link: .feelRichAmount, text: (lang == "ru" ? "Изменить сумму" : "Change amount") + " (\(starsAmountText))"))
-    if GLEGramFeatures.pluginsEnabled {
+    if MQGramFeatures.pluginsEnabled {
         let pluginItems = PluginRunner.shared.allSettingsItems()
         if !pluginItems.isEmpty {
             // Group by section name preserving order
@@ -4889,9 +4889,9 @@ private func gleGramEntries(presentationData: PresentationData, contentSettingsC
     return filterSGItemListUIEntrires(entries: entries, by: state.searchQuery)
 }
 
-public func gleGramSettingsController(context: AccountContext) -> ViewController {
-    if let status = cachedGLEGramUserStatus(), !status.access.glegramTab, let promo = status.glegramPromo {
-        return gleGramPaywallController(context: context, promo: promo, trialAvailable: status.trialAvailable)
+public func mqGramSettingsController(context: AccountContext) -> ViewController {
+    if let status = cachedMQGramUserStatus(), !status.access.mqgramTab, let promo = status.mqgramPromo {
+        return mqGramPaywallController(context: context, promo: promo, trialAvailable: status.trialAvailable)
     }
 
     var presentControllerImpl: ((ViewController, ViewControllerPresentationArguments?) -> Void)?
@@ -4901,7 +4901,7 @@ public func gleGramSettingsController(context: AccountContext) -> ViewController
     #endif
     
     /// Monotonic tick so pushed tab `ItemListController` always gets a new combineLatest emission (Bool `true`→`true` was unreliable for some flows).
-    final class GLEGramSettingsReloadBump {
+    final class MQGramSettingsReloadBump {
         private var generation: UInt64 = 0
         let promise = ValuePromise(UInt64(0), ignoreRepeated: false)
         func bump() {
@@ -4909,12 +4909,12 @@ public func gleGramSettingsController(context: AccountContext) -> ViewController
             promise.set(generation)
         }
     }
-    let reloadBump = GLEGramSettingsReloadBump()
+    let reloadBump = MQGramSettingsReloadBump()
     var fontNotifyWorkItem: DispatchWorkItem?
-    let initialState = GLEGramSettingsControllerState()
+    let initialState = MQGramSettingsControllerState()
     let statePromise = ValuePromise(initialState, ignoreRepeated: true)
     let stateValue = Atomic(value: initialState)
-    let updateState: ((GLEGramSettingsControllerState) -> GLEGramSettingsControllerState) -> Void = { f in
+    let updateState: ((MQGramSettingsControllerState) -> MQGramSettingsControllerState) -> Void = { f in
         statePromise.set(stateValue.modify { f($0) })
     }
     
@@ -4926,8 +4926,8 @@ public func gleGramSettingsController(context: AccountContext) -> ViewController
     contentSettingsConfigurationPromise.set(.single(nil)
     |> then(updatedContentSettingsConfiguration))
     
-    var argumentsRef: SGItemListArguments<SGBoolSetting, GLEGramSliderSetting, GLEGramOneFromManySetting, GLEGramDisclosureLink, AnyHashable>?
-    let arguments = SGItemListArguments<SGBoolSetting, GLEGramSliderSetting, GLEGramOneFromManySetting, GLEGramDisclosureLink, AnyHashable>(
+    var argumentsRef: SGItemListArguments<SGBoolSetting, MQGramSliderSetting, MQGramOneFromManySetting, MQGramDisclosureLink, AnyHashable>?
+    let arguments = SGItemListArguments<SGBoolSetting, MQGramSliderSetting, MQGramOneFromManySetting, MQGramDisclosureLink, AnyHashable>(
         context: context,
         setBoolValue: { setting, value in
             switch setting {
@@ -5169,21 +5169,21 @@ public func gleGramSettingsController(context: AccountContext) -> ViewController
         openDisclosureLink: { link in
             if link == .channelLink {
                 let pd = context.sharedContext.currentPresentationData.with { $0 }
-                context.sharedContext.openExternalUrl(context: context, urlContext: .generic, url: "https://t.me/glegramios", forceExternal: true, presentationData: pd, navigationController: nil, dismissInput: {})
+                context.sharedContext.openExternalUrl(context: context, urlContext: .generic, url: "https://t.me/mqgramios", forceExternal: true, presentationData: pd, navigationController: nil, dismissInput: {})
                 return
             }
             if link == .chatLink {
                 let pd = context.sharedContext.currentPresentationData.with { $0 }
-                context.sharedContext.openExternalUrl(context: context, urlContext: .generic, url: "https://t.me/glegramios_chat", forceExternal: true, presentationData: pd, navigationController: nil, dismissInput: {})
+                context.sharedContext.openExternalUrl(context: context, urlContext: .generic, url: "https://t.me/mqgramios_chat", forceExternal: true, presentationData: pd, navigationController: nil, dismissInput: {})
                 return
             }
             if link == .forumLink {
                 let pd = context.sharedContext.currentPresentationData.with { $0 }
-                context.sharedContext.openExternalUrl(context: context, urlContext: .generic, url: "https://t.me/glegram_forum", forceExternal: true, presentationData: pd, navigationController: nil, dismissInput: {})
+                context.sharedContext.openExternalUrl(context: context, urlContext: .generic, url: "https://t.me/mqgram_forum", forceExternal: true, presentationData: pd, navigationController: nil, dismissInput: {})
                 return
             }
             if link == .betaChannel {
-                if let status = cachedGLEGramUserStatus(), let betaConfig = status.betaConfig, let url = betaConfig.channelUrl, isUrlSafeForExternalOpen(url) {
+                if let status = cachedMQGramUserStatus(), let betaConfig = status.betaConfig, let url = betaConfig.channelUrl, isUrlSafeForExternalOpen(url) {
                     let pd = context.sharedContext.currentPresentationData.with { $0 }
                     context.sharedContext.openExternalUrl(context: context, urlContext: .generic, url: url, forceExternal: false, presentationData: pd, navigationController: nil, dismissInput: {})
                 }
@@ -5221,11 +5221,11 @@ public func gleGramSettingsController(context: AccountContext) -> ViewController
                 pushControllerImpl?(pickerController)
                 #endif
             } else if link == .appearanceTab {
-                pushControllerImpl?(buildGLEGramTabController(tab: .appearance, args: argumentsRef!))
+                pushControllerImpl?(buildMQGramTabController(tab: .appearance, args: argumentsRef!))
             } else if link == .securityTab {
-                pushControllerImpl?(buildGLEGramTabController(tab: .security, args: argumentsRef!))
+                pushControllerImpl?(buildMQGramTabController(tab: .security, args: argumentsRef!))
             } else if link == .otherTab {
-                pushControllerImpl?(buildGLEGramTabController(tab: .other, args: argumentsRef!))
+                pushControllerImpl?(buildMQGramTabController(tab: .other, args: argumentsRef!))
             } else if link == .tabOrganizer {
                 let presentationData = context.sharedContext.currentPresentationData.with { $0 }
                 let tabOrganizerController = TabOrganizerController(context: context, presentationData: presentationData, onSave: {
@@ -5244,7 +5244,7 @@ public func gleGramSettingsController(context: AccountContext) -> ViewController
                 pushControllerImpl?(doubleBottomSettingsController(context: context))
             } else if link == .protectedChatsSettings {
                 pushControllerImpl?(protectedChatsSettingsController(context: context))
-            } else if link == .pluginsSettings, GLEGramFeatures.pluginsEnabled {
+            } else if link == .pluginsSettings, MQGramFeatures.pluginsEnabled {
                 PluginRunner.shared.ensureLoaded()
                 pushControllerImpl?(PluginListController(context: context, onPluginsChanged: {
                     PluginRunner.shared.ensureLoaded()
@@ -5331,7 +5331,7 @@ public func gleGramSettingsController(context: AccountContext) -> ViewController
         action: { actionType in
             guard let actionString = actionType as? String else { return }
             if actionString.hasPrefix("plugin:") {
-                guard GLEGramFeatures.pluginsEnabled else { return }
+                guard MQGramFeatures.pluginsEnabled else { return }
                 let parts = actionString.split(separator: ":", maxSplits: 2, omittingEmptySubsequences: false)
                 if parts.count >= 3 {
                     let pluginId = String(parts[1])
@@ -5344,7 +5344,7 @@ public func gleGramSettingsController(context: AccountContext) -> ViewController
                 let presentationData = context.sharedContext.currentPresentationData.with { $0 }
                 let lang = presentationData.strings.baseLanguageCode
                 do {
-                    let url = try SGSimpleSettings.exportGLEGramSettingsJSONFile()
+                    let url = try SGSimpleSettings.exportMQGramSettingsJSONFile()
                     let picker = legacyICloudFilePicker(
                         theme: presentationData.theme,
                         mode: .export,
@@ -5389,7 +5389,7 @@ public func gleGramSettingsController(context: AccountContext) -> ViewController
                             return
                         }
                         do {
-                            let count = try SGSimpleSettings.importGLEGramSettingsJSON(data: data)
+                            let count = try SGSimpleSettings.importMQGramSettingsJSON(data: data)
                             context.sharedContext.notifyFontSettingsChanged()
                             NotificationCenter.default.post(name: .sgAvatarRoundingSettingsDidChange, object: nil)
                             NotificationCenter.default.post(name: .sgSelfChatTitleSettingsDidChange, object: nil)
@@ -5497,22 +5497,22 @@ public func gleGramSettingsController(context: AccountContext) -> ViewController
         iconResolver: { ref in
             guard let ref = ref else { return nil }
             guard let img = UIImage(bundleImageName: ref) else { return nil }
-            // Иконки вкладок (GLEGramTab*) масштабируем до размера как у «Канал, Чат, Форум» (~29 pt)
+            // Иконки вкладок (MQGramTab*) масштабируем до размера как у «Канал, Чат, Форум» (~29 pt)
             return scaleImageForListIcon(img, maxSize: 29.0) ?? img
         }
     )
     argumentsRef = arguments
     
-    func buildGLEGramTabController(tab: GLEGramTab, args: SGItemListArguments<SGBoolSetting, GLEGramSliderSetting, GLEGramOneFromManySetting, GLEGramDisclosureLink, AnyHashable>) -> ViewController {
+    func buildMQGramTabController(tab: MQGramTab, args: SGItemListArguments<SGBoolSetting, MQGramSliderSetting, MQGramOneFromManySetting, MQGramDisclosureLink, AnyHashable>) -> ViewController {
         let tabSignal = combineLatest(reloadBump.promise.get(), statePromise.get(), context.sharedContext.presentationData, contentSettingsConfigurationPromise.get())
-        |> map { _, state, presentationData, contentSettingsConfiguration -> (ItemListControllerState, (ItemListNodeState, SGItemListArguments<SGBoolSetting, GLEGramSliderSetting, GLEGramOneFromManySetting, GLEGramDisclosureLink, AnyHashable>)) in
+        |> map { _, state, presentationData, contentSettingsConfiguration -> (ItemListControllerState, (ItemListNodeState, SGItemListArguments<SGBoolSetting, MQGramSliderSetting, MQGramOneFromManySetting, MQGramDisclosureLink, AnyHashable>)) in
             let lang = presentationData.strings.baseLanguageCode
             let tabTitles = lang == "ru" ? ["Оформление", "Приватность", "Другие функции"] : ["Appearance", "Privacy", "Other"]
             let tabTitle = tabTitles[tab.rawValue]
             var tabState = state
             tabState.selectedTab = tab
-            let allEntries = gleGramEntries(presentationData: presentationData, contentSettingsConfiguration: contentSettingsConfiguration, state: tabState, mediaBoxBasePath: context.account.postbox.mediaBox.basePath)
-            let entriesFilteredByTab = gleGramEntriesFiltered(by: tab, entries: allEntries)
+            let allEntries = mqGramEntries(presentationData: presentationData, contentSettingsConfiguration: contentSettingsConfiguration, state: tabState, mediaBoxBasePath: context.account.postbox.mediaBox.basePath)
+            let entriesFilteredByTab = mqGramEntriesFiltered(by: tab, entries: allEntries)
             let entries = filterSGItemListUIEntrires(entries: entriesFilteredByTab, by: tabState.searchQuery)
             let controllerState = ItemListControllerState(
                 presentationData: ItemListPresentationData(presentationData),
@@ -5536,17 +5536,17 @@ public func gleGramSettingsController(context: AccountContext) -> ViewController
         return tabController
     }
     
-    let signal: Signal<(ItemListControllerState, (ItemListNodeState, SGItemListArguments<SGBoolSetting, GLEGramSliderSetting, GLEGramOneFromManySetting, GLEGramDisclosureLink, AnyHashable>)), NoError> = combineLatest(reloadBump.promise.get(), context.sharedContext.presentationData)
-    |> map { _, presentationData -> (ItemListControllerState, (ItemListNodeState, SGItemListArguments<SGBoolSetting, GLEGramSliderSetting, GLEGramOneFromManySetting, GLEGramDisclosureLink, AnyHashable>)) in
+    let signal: Signal<(ItemListControllerState, (ItemListNodeState, SGItemListArguments<SGBoolSetting, MQGramSliderSetting, MQGramOneFromManySetting, MQGramDisclosureLink, AnyHashable>)), NoError> = combineLatest(reloadBump.promise.get(), context.sharedContext.presentationData)
+    |> map { _, presentationData -> (ItemListControllerState, (ItemListNodeState, SGItemListArguments<SGBoolSetting, MQGramSliderSetting, MQGramOneFromManySetting, MQGramDisclosureLink, AnyHashable>)) in
         SGSimpleSettings.shared.currentAccountPeerId = "\(context.account.peerId.id._internalGetInt64Value())"
         let controllerState = ItemListControllerState(
             presentationData: ItemListPresentationData(presentationData),
-            title: .text("GLEGram"),
+            title: .text("MQGram"),
             leftNavigationButton: nil,
             rightNavigationButton: nil,
             backNavigationButton: ItemListBackButton(title: presentationData.strings.Common_Back)
         )
-        let entries = gleGramRootEntries(presentationData: presentationData)
+        let entries = mqGramRootEntries(presentationData: presentationData)
         let listState = ItemListNodeState(
             presentationData: ItemListPresentationData(presentationData),
             entries: entries,
@@ -5981,7 +5981,7 @@ private func SGControllerEntries(presentationData: PresentationData, callListSet
     entries.append(.notice(id: id.count, section: .other, text: i18n("Settings.DefaultEmojisFirst.Notice", lang)))
     entries.append(.toggle(id: id.count, section: .other, settingName: .hidePhoneInSettings, value: SGSimpleSettings.shared.hidePhoneInSettings, text: i18n("Settings.HidePhoneInSettingsUI", lang), enabled: true))
     entries.append(.notice(id: id.count, section: .other, text: i18n("Settings.HidePhoneInSettingsUI.Notice", lang)))
-    // NOTE: Swiftgram-specific privacy/content toggles were moved to GLEGram.
+    // NOTE: Swiftgram-specific privacy/content toggles were moved to MQGram.
     
     return filterSGItemListUIEntrires(entries: entries, by: state.searchQuery)
 }
@@ -6120,7 +6120,7 @@ public func sgSettingsController(context: AccountContext/*, focusOnItemTag: Int?
         case .hideReactions:
             SGSimpleSettings.shared.hideReactions = value
         case .pluginSystemEnabled:
-            guard GLEGramFeatures.pluginsEnabled else { return }
+            guard MQGramFeatures.pluginsEnabled else { return }
             SGSimpleSettings.shared.pluginSystemEnabled = value
             if value {
                 PluginRunner.shared.ensureLoaded()
@@ -6301,7 +6301,7 @@ public func sgSettingsController(context: AccountContext/*, focusOnItemTag: Int?
             SGSimpleSettings.shared.voiceChangerEnabled = value
         case .sensitiveContentEnabled:
             // Intentionally not handled here.
-            // This setting lives in GLEGram and is applied via Telegram server-side content settings.
+            // This setting lives in MQGram and is applied via Telegram server-side content settings.
             break
         case .scrollToTopButtonEnabled:
             SGSimpleSettings.shared.scrollToTopButtonEnabled = value

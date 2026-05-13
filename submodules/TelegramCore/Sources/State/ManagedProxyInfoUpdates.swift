@@ -3,6 +3,9 @@ import TelegramApi
 import Postbox
 import SwiftSignalKit
 import MtProtoKit
+#if canImport(SGSimpleSettings)
+import SGSimpleSettings
+#endif
 
 
 public final class PromoChatListItem: AdditionalChatListItem {
@@ -223,7 +226,13 @@ func _internal_fetchPromoInfo(accountPeerId: EnginePeer.Id, postbox: Postbox, ne
                 }
                 
                 var additionalChatListItems: [AdditionalChatListItem] = []
-                if let kind, let peer, let parsedPeer = transaction.getPeer(peer.peerId) {
+                // MARK: - MQGram - hide proxy/promo sponsor chat from chat list when toggle is on
+                #if canImport(SGSimpleSettings)
+                let mqHideProxySponsor = SGSimpleSettings.shared.hideProxySponsor
+                #else
+                let mqHideProxySponsor = false
+                #endif
+                if !mqHideProxySponsor, let kind, let peer, let parsedPeer = transaction.getPeer(peer.peerId) {
                     additionalChatListItems.append(PromoChatListItem(peerId: parsedPeer.id, kind: kind))
                 }
                 transaction.replaceAdditionalChatListItems(additionalChatListItems)

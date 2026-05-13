@@ -115,7 +115,7 @@ enum SGBoolSetting: String {
     case saveDeletedMessagesReactions
     case saveDeletedMessagesForBots
     case saveEditHistory
-    case enableLocalMessageEditing  // used in GLEGramSettingsController
+    case enableLocalMessageEditing  // used in MQGramSettingsController
     // Ghost Mode settings
     case disableOnlineStatus
     case disableTypingStatus
@@ -135,6 +135,9 @@ enum SGBoolSetting: String {
     case disableEmojiInteractionStatus
     case disableEmojiAcknowledgementStatus
     case disableMessageReadReceipt
+    // MARK: - MQGram
+    case readAfterAction
+    // MARK: - End MQGram
     case disableStoryReadReceipt
     case disableAllAds
     case hideProxySponsor
@@ -143,6 +146,10 @@ enum SGBoolSetting: String {
     case disableScreenshotDetection
     case enableSavingSelfDestructingMessages
     case disableSecretChatBlurOnScreenshot
+    // MARK: - MQGram
+    case disableAutoDeleteMessages
+    case enableFileMimeFix
+    // MARK: - End MQGram
     case enableLocalPremium
     case scrollToTopButtonEnabled
     case fakeLocationEnabled
@@ -384,7 +391,7 @@ private func SGControllerEntries(presentationData: PresentationData, callListSet
     entries.append(.notice(id: id.count, section: .other, text: i18n("Settings.DefaultEmojisFirst.Notice", lang)))
     entries.append(.toggle(id: id.count, section: .other, settingName: .hidePhoneInSettings, value: SGSimpleSettings.shared.hidePhoneInSettings, text: i18n("Settings.HidePhoneInSettingsUI", lang), enabled: true))
     entries.append(.notice(id: id.count, section: .other, text: i18n("Settings.HidePhoneInSettingsUI.Notice", lang)))
-    // NOTE: Swiftgram-specific privacy/content toggles were moved to GLEGram.
+    // NOTE: Swiftgram-specific privacy/content toggles were moved to MQGram.
     
     return filterSGItemListUIEntrires(entries: entries, by: state.searchQuery)
 }
@@ -668,6 +675,10 @@ public func sgSettingsController(context: AccountContext/*, focusOnItemTag: Int?
             SGSimpleSettings.shared.disableEmojiAcknowledgementStatus = value
         case .disableMessageReadReceipt:
             SGSimpleSettings.shared.disableMessageReadReceipt = value
+        // MARK: - MQGram
+        case .readAfterAction:
+            SGSimpleSettings.shared.readAfterAction = value
+        // MARK: - End MQGram
         case .disableStoryReadReceipt:
             SGSimpleSettings.shared.disableStoryReadReceipt = value
         case .disableAllAds:
@@ -683,11 +694,17 @@ public func sgSettingsController(context: AccountContext/*, focusOnItemTag: Int?
             SGSimpleSettings.shared.enableSavingSelfDestructingMessages = value
         case .disableSecretChatBlurOnScreenshot:
             SGSimpleSettings.shared.disableSecretChatBlurOnScreenshot = value
+        // MARK: - MQGram
+        case .disableAutoDeleteMessages:
+            SGSimpleSettings.shared.disableAutoDeleteMessages = value
+        case .enableFileMimeFix:
+            SGSimpleSettings.shared.enableFileMimeFix = value
+        // MARK: - End MQGram
         case .enableLocalPremium:
             SGSimpleSettings.shared.enableLocalPremium = value
         case .sensitiveContentEnabled:
             // Intentionally not handled here.
-            // This setting lives in GLEGram and is applied via Telegram server-side content settings.
+            // This setting lives in MQGram and is applied via Telegram server-side content settings.
             break
         case .scrollToTopButtonEnabled:
             SGSimpleSettings.shared.scrollToTopButtonEnabled = value

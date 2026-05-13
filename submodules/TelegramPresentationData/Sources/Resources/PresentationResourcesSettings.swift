@@ -26,7 +26,7 @@ private func addRoundedRectPath(context: CGContext, rect: CGRect, radius: CGFloa
     context.restoreGState()
 }
 
-private func renderIcon(name: String, scaleFactor: CGFloat = 1.0, backgroundColors: [UIColor]? = nil) -> UIImage? {
+private func renderIcon(name: String, scaleFactor: CGFloat = 1.0, backgroundColors: [UIColor]? = nil, cornerRadius: CGFloat? = nil) -> UIImage? {
     return generateImage(CGSize(width: 29.0, height: 29.0), contextGenerator: { size, context in
         let bounds = CGRect(origin: CGPoint(), size: size)
         context.clear(bounds)
@@ -49,6 +49,10 @@ private func renderIcon(name: String, scaleFactor: CGFloat = 1.0, backgroundColo
                 context.draw(cgImage, in: CGRect(origin: CGPoint(x: (bounds.width - imageSize.width) * 0.5, y: (bounds.height - imageSize.height) * 0.5), size: imageSize))
             }
         } else {
+            if let cornerRadius {
+                addRoundedRectPath(context: context, rect: bounds, radius: cornerRadius)
+                context.clip()
+            }
             if let image = UIImage(bundleImageName: name), let cgImage = image.cgImage {
                 let imageSize: CGSize
                 if scaleFactor == 1.0 {
@@ -58,6 +62,9 @@ private func renderIcon(name: String, scaleFactor: CGFloat = 1.0, backgroundColo
                 }
                 context.draw(cgImage, in: CGRect(origin: CGPoint(x: (bounds.width - imageSize.width) * 0.5, y: (bounds.height - imageSize.height) * 0.5), size: imageSize))
             }
+            if cornerRadius != nil {
+                context.resetClip()
+            }
         }
     })
 }
@@ -65,9 +72,9 @@ private func renderIcon(name: String, scaleFactor: CGFloat = 1.0, backgroundColo
 public struct PresentationResourcesSettings {
     public static let swiftgram = renderIcon(name: "SwiftgramSettings", scaleFactor: 30.0 / 512.0)
     public static let swiftgramPro = renderIcon(name: "SwiftgramPro", scaleFactor: 30.0 / 256.0)
-    // MARK: - GLEGram
-    public static let glegram = renderIcon(name: "GLEGramSettings", scaleFactor: 30.0 / 120.0)
-    // MARK: - End GLEGram
+    // MARK: - MQGram
+    public static let mqgram = renderIcon(name: "MQGramSettings", scaleFactor: 30.0 / 120.0, cornerRadius: 7.0)
+    // MARK: - End MQGram
     public static let editProfile = renderIcon(name: "Settings/Menu/EditProfile")
     public static let proxy = renderIcon(name: "Settings/Menu/Proxy")
     public static let savedMessages = renderIcon(name: "Settings/Menu/SavedMessages")

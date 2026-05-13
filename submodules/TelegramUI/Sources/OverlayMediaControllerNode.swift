@@ -81,7 +81,10 @@ final class OverlayMediaControllerNode: ASDisplayNode, ASGestureRecognizerDelega
     }
     
     override func hitTest(_ point: CGPoint, with event: UIEvent?) -> UIView? {
-        for item in self.videoNodes {
+        for item in self.videoNodes.reversed() {
+            if item.node.isHidden || item.node.alpha < 0.01 {
+                continue
+            }
             if item.node.frame.contains(point) {
                 if let result = item.node.hitTest(point.offsetBy(dx: -item.node.frame.origin.x, dy: -item.node.frame.origin.y), with: event) {
                     return result

@@ -2,17 +2,34 @@ import Foundation
 import Postbox
 import TelegramApi
 import SwiftSignalKit
+#if canImport(SGSimpleSettings)
+import SGSimpleSettings
+#endif
 
+private func mqShouldBlockMessageReadReceipt(peerId: PeerId) -> Bool {
+    #if canImport(SGSimpleSettings)
+    return SGSimpleSettings.shared.shouldBlockMessageReadReceipt(
+        peerIdNamespace: peerId.namespace._internalGetInt32Value(),
+        peerIdId: peerId.id._internalGetInt64Value()
+    )
+    #else
+    return false
+    #endif
+}
 
 func _internal_applyMaxReadIndexInteractively(postbox: Postbox, stateManager: AccountStateManager, index: MessageIndex) -> Signal<Void, NoError> {
     return postbox.transaction { transaction -> Void in
         _internal_applyMaxReadIndexInteractively(transaction: transaction, stateManager: stateManager, index: index)
     }
 }
-    
+
 func _internal_applyMaxReadIndexInteractively(transaction: Transaction, stateManager: AccountStateManager, index: MessageIndex) {
+    if mqShouldBlockMessageReadReceipt(peerId: index.id.peerId) {
+        return
+    }
+
     let messageIds = transaction.applyInteractiveReadMaxIndex(index)
-    
+
     if let peer = transaction.getPeer(index.id.peerId), peer.isForumOrMonoForum {
         if let combinedPeerReadState = transaction.getCombinedPeerReadState(peer.id), combinedPeerReadState.count == 0 {
             for item in transaction.getMessageHistoryThreadIndex(peerId: peer.id, limit: 100) {
@@ -27,7 +44,7 @@ func _internal_applyMaxReadIndexInteractively(transaction: Transaction, stateMan
                     data.isMarkedUnread = false
                     data.maxIncomingReadId = max(messageIndex.id.id, data.maxIncomingReadId)
                     data.maxKnownMessageId = max(data.maxKnownMessageId, messageIndex.id.id)
-                    
+
                     if let entry = StoredMessageHistoryThreadInfo(data) {
                         transaction.setMessageHistoryThreadInfo(peerId: index.id.peerId, threadId: item.threadId, info: entry)
                     }
@@ -35,7 +52,7 @@ func _internal_applyMaxReadIndexInteractively(transaction: Transaction, stateMan
             }
         }
     }
-    
+
     if index.id.peerId.namespace == Namespaces.Peer.SecretChat {
         let timestamp = Int32(CFAbsoluteTimeGetCurrent() + NSTimeIntervalSince1970)
         for id in messageIds {
@@ -86,11 +103,11 @@ func maybeReadSecretOutgoingMessage(transaction: Transaction, index: MessageInde
         assertionFailure()
         return
     }
-    
+
     guard let combinedState = transaction.getCombinedPeerReadState(index.id.peerId) else {
         return
     }
-    
+
     if combinedState.isOutgoingMessageIndexRead(index) {
         applySecretOutgoingMessageReadActions(transaction: transaction, id: index.id, beginCountdownAt: index.timestamp)
     }
@@ -105,7 +122,7 @@ func applySecretOutgoingMessageReadActions(transaction: Transaction, id: Message
         assertionFailure()
         return
     }
-    
+
     if let message = transaction.getMessage(id), message.flags.intersection(.IsIncomingMask).isEmpty {
         if message.flags.intersection([.Unsent, .Sending, .Failed]).isEmpty {
             for attribute in message.attributes {
@@ -152,15 +169,18 @@ func _internal_toggleForumThreadUnreadMarkInteractively(transaction: Transaction
     guard let messageIndex = transaction.getMessageHistoryThreadTopMessage(peerId: peerId, threadId: threadId, namespaces: Set([Namespaces.Message.Cloud])) else {
         return
     }
-    
+
     let setToValue = setToValue ?? !(data.incomingUnreadCount != 0 || data.isMarkedUnread)
-    
+    if !setToValue && mqShouldBlockMessageReadReceipt(peerId: peerId) {
+        return
+    }
+
     if setToValue {
         data.isMarkedUnread = true
         if let entry = StoredMessageHistoryThreadInfo(data) {
             transaction.setMessageHistoryThreadInfo(peerId: peerId, threadId: threadId, info: entry)
         }
-        
+
         if peer.isForum {
         } else if peer.isMonoForum {
             if let inputPeer = apiInputPeer(peer), let subPeer = transaction.getPeer(PeerId(threadId)).flatMap(apiInputPeer) {
@@ -173,11 +193,11 @@ func _internal_toggleForumThreadUnreadMarkInteractively(transaction: Transaction
             data.isMarkedUnread = false
             data.maxIncomingReadId = max(messageIndex.id.id, data.maxIncomingReadId)
             data.maxKnownMessageId = max(data.maxKnownMessageId, messageIndex.id.id)
-            
+
             if let entry = StoredMessageHistoryThreadInfo(data) {
                 transaction.setMessageHistoryThreadInfo(peerId: peerId, threadId: threadId, info: entry)
             }
-            
+
             if peer.isForum {
                 if let inputPeer = apiInputPeer(peer) {
                     let _ = network.request(Api.functions.messages.readDiscussion(peer: inputPeer, msgId: Int32(clamping: threadId), readMaxId: messageIndex.id.id)).start()
@@ -204,16 +224,19 @@ func _internal_markForumThreadAsReadInteractively(transaction: Transaction, netw
     guard let messageIndex = transaction.getMessageHistoryThreadTopMessage(peerId: peerId, threadId: threadId, namespaces: Set([Namespaces.Message.Cloud])) else {
         return
     }
+    if mqShouldBlockMessageReadReceipt(peerId: peerId) {
+        return
+    }
     if data.incomingUnreadCount != 0 {
         data.incomingUnreadCount = 0
         data.isMarkedUnread = false
         data.maxIncomingReadId = max(messageIndex.id.id, data.maxIncomingReadId)
         data.maxKnownMessageId = max(data.maxKnownMessageId, messageIndex.id.id)
-        
+
         if let entry = StoredMessageHistoryThreadInfo(data) {
             transaction.setMessageHistoryThreadInfo(peerId: peerId, threadId: threadId, info: entry)
         }
-        
+
         if peer.isForum {
             if let inputPeer = apiInputPeer(peer) {
                 let _ = network.request(Api.functions.messages.readDiscussion(peer: inputPeer, msgId: Int32(clamping: threadId), readMaxId: messageIndex.id.id)).start()
@@ -230,14 +253,14 @@ func _internal_togglePeerUnreadMarkInteractively(transaction: Transaction, netwo
     guard let peer = transaction.getPeer(peerId) else {
         return
     }
-    
+
     var displayAsRegularChat: Bool = false
     if let channel = peer as? TelegramChannel, channel.flags.contains(.displayForumAsTabs) {
         displayAsRegularChat = true
     } else if let cachedData = transaction.getPeerCachedData(peerId: peerId) as? CachedChannelData {
         displayAsRegularChat = cachedData.viewForumAsMessages.knownValue ?? false
     }
-    
+
     if peer.isForumOrMonoForum, !displayAsRegularChat {
         for item in transaction.getMessageHistoryThreadIndex(peerId: peerId, limit: 20) {
             guard var data = transaction.getMessageHistoryThreadInfo(peerId: peerId, threadId: item.threadId)?.data.get(MessageHistoryThreadData.self) else {
@@ -251,11 +274,11 @@ func _internal_togglePeerUnreadMarkInteractively(transaction: Transaction, netwo
                 data.isMarkedUnread = false
                 data.maxIncomingReadId = max(messageIndex.id.id, data.maxIncomingReadId)
                 data.maxKnownMessageId = max(data.maxKnownMessageId, messageIndex.id.id)
-                
+
                 if let entry = StoredMessageHistoryThreadInfo(data) {
                     transaction.setMessageHistoryThreadInfo(peerId: peerId, threadId: item.threadId, info: entry)
                 }
-                
+
                 if peer.isForum {
                     if let inputPeer = apiInputPeer(peer) {
                         let _ = network.request(Api.functions.messages.readDiscussion(peer: inputPeer, msgId: Int32(clamping: item.threadId), readMaxId: messageIndex.id.id)).start()
@@ -283,7 +306,7 @@ func _internal_togglePeerUnreadMarkInteractively(transaction: Transaction, netwo
                 }
             }
         }
-        
+
         if !hasUnread && peerId.namespace == Namespaces.Peer.SecretChat {
             let unseenSummary = transaction.getMessageTagSummary(peerId: peerId, threadId: nil, tagMask: .unseenPersonalMessage, namespace: Namespaces.Message.Cloud, customTag: nil)
             let actionSummary = transaction.getPendingMessageActionsSummary(peerId: peerId, type: PendingMessageActionType.consumeUnseenPersonalMessage, namespace: Namespaces.Message.Cloud)
@@ -291,9 +314,12 @@ func _internal_togglePeerUnreadMarkInteractively(transaction: Transaction, netwo
                 hasUnread = true
             }
         }
-        
+
         if hasUnread {
             if setToValue == nil || !(setToValue!) {
+                if mqShouldBlockMessageReadReceipt(peerId: peerId) {
+                    return
+                }
                 if let index = transaction.getTopPeerMessageIndex(peerId: peerId) {
                     let _ = transaction.applyInteractiveReadMaxIndex(index)
                 } else {
@@ -335,7 +361,7 @@ func _internal_markAllChatsAsReadInteractively(transaction: Transaction, network
     }
 }
 
-// MARK: - GLEGram - Marks all chats as read **locally only**. Updates Postbox and UI; does **not** sync to server (no API calls, no sync ops).
+// MARK: - MQGram - Marks all chats as read **locally only**. Updates Postbox and UI; does **not** sync to server (no API calls, no sync ops).
 func _internal_markAllChatsAsReadLocallyOnly(transaction: Transaction, viewTracker: AccountViewTracker, groupId: PeerGroupId, filterPredicate: ChatListFilterPredicate?) {
     var statesToReset: [PeerId: [MessageId.Namespace: PeerReadState]] = [:]
     let peerIds = transaction.getUnreadChatListPeerIds(groupId: groupId, filterPredicate: filterPredicate, additionalFilter: nil, stopOnFirstMatch: false)

@@ -2,6 +2,8 @@
 bazel-*
 !build-system/bazel-utils/
 build/
+!third-party/libvpx/libvpx/build/
+!third-party/libvpx/libvpx/build/**
 .build/
 *.ipa
 *.xcarchive

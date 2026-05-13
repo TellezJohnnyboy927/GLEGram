@@ -31,7 +31,7 @@ func addMessageMediaResourceIdsToRemove(message: Message, resourceIds: inout [Me
     }
 }
 
-// MARK: - GLEGram - Force-delete message ids (bypasses "save deleted messages" marking).
+// MARK: - MQGram - Force-delete message ids (bypasses "save deleted messages" marking).
 /// Returns the message ids that were actually deleted.
 public func _internal_forceDeleteMessages(transaction: Transaction, mediaBox: MediaBox, ids: [MessageId], deleteMedia: Bool = true, manualAddMessageThreadStatsDifference: ((MessageThreadKey, Int, Int) -> Void)? = nil) -> [MessageId] {
     let idsToDelete = ids
@@ -72,38 +72,47 @@ public func _internal_forceDeleteMessages(transaction: Transaction, mediaBox: Me
 /// Returns the message ids that were actually deleted (not marked as saved-deleted).
 @discardableResult
 public func _internal_deleteMessages(transaction: Transaction, mediaBox: MediaBox, ids: [MessageId], deleteMedia: Bool = true, manualAddMessageThreadStatsDifference: ((MessageThreadKey, Int, Int) -> Void)? = nil) -> [MessageId] {
-    // MARK: GLEGram - Mark messages as deleted instead of actually deleting them
+    // MARK: MQGram - Mark cloud messages as deleted in place instead of moving them.
     #if canImport(SGDeletedMessages)
-    let savedSnapshots = SGDeletedMessages.saveSnapshots(
+    let shouldSaveDeletedMessage: (MessageId, Message) -> Bool = { id, _ in
+        #if canImport(SGSimpleSettings)
+        // AyuGram-style: don't save bot chats if disabled.
+        if id.peerId.namespace == Namespaces.Peer.CloudUser,
+           let peer = transaction.getPeer(id.peerId) as? TelegramUser,
+           peer.botInfo != nil,
+           !SGSimpleSettings.shared.saveDeletedMessagesForBots {
+            return false
+        }
+        #endif
+        return true
+    }
+    let transformDeletedAttributes: (Message, inout [MessageAttribute]) -> Void = { _, attributes in
+        #if canImport(SGSimpleSettings)
+        if !SGSimpleSettings.shared.saveDeletedMessagesReactions {
+            attributes.removeAll(where: { $0 is ReactionsMessageAttribute })
+        }
+        #endif
+    }
+    let markedInPlace = SGDeletedMessages.markMessagesAsDeletedInPlace(
         ids: ids,
         transaction: transaction,
-        shouldSave: { id, _ in
-            #if canImport(SGSimpleSettings)
-            // AyuGram-style: don't save bot chats if disabled
-            if id.peerId.namespace == Namespaces.Peer.CloudUser,
-               let peer = transaction.getPeer(id.peerId) as? TelegramUser,
-               peer.botInfo != nil,
-               !SGSimpleSettings.shared.saveDeletedMessagesForBots {
-                return false
-            }
-            #endif
-            return true
-        },
-        transformAttributes: { _, attributes in
-            #if canImport(SGSimpleSettings)
-            if !SGSimpleSettings.shared.saveDeletedMessagesReactions {
-                attributes.removeAll(where: { $0 is ReactionsMessageAttribute })
-            }
-            #endif
-        },
+        shouldSave: shouldSaveDeletedMessage,
+        transformAttributes: transformDeletedAttributes
+    )
+    let idsForSnapshots = ids.filter { !markedInPlace.contains($0) }
+    let savedSnapshots = SGDeletedMessages.saveSnapshots(
+        ids: idsForSnapshots,
+        transaction: transaction,
+        shouldSave: shouldSaveDeletedMessage,
+        transformAttributes: transformDeletedAttributes,
         transformMedia: { message, _ in
             // AyuGram-style: copy completed media resources to "Saved Attachments"
             return sgTransformMediaForSavedDeletedSnapshot(message: message, mediaBox: mediaBox)
         }
     )
-    let idsToDelete = ids
+    let idsToDelete = ids.filter { !markedInPlace.contains($0) }
     #if canImport(SGLogging)
-    SGLogger.shared.log("SGDeletedMessages", "_internal_deleteMessages: ids=\(ids), savedSnapshots=\(savedSnapshots.count), deleting originals=\(idsToDelete.count)")
+    SGLogger.shared.log("SGDeletedMessages", "_internal_deleteMessages: ids=\(ids), markedInPlace=\(markedInPlace.count), savedSnapshots=\(savedSnapshots.count), deleting originals=\(idsToDelete.count)")
     #endif
     #else
     let idsToDelete = ids
@@ -161,7 +170,7 @@ public func _internal_deleteMessages(transaction: Transaction, mediaBox: MediaBo
     return idsToDelete
 }
 
-// MARK: - GLEGram - Safely delete messages in range, preserving saved deleted messages
+// MARK: - MQGram - Safely delete messages in range, preserving saved deleted messages
 func _internal_deleteMessagesInRangeSafely(transaction: Transaction, mediaBox: MediaBox, peerId: PeerId, namespace: MessageId.Namespace, minId: MessageId.Id, maxId: MessageId.Id, forEachMedia: ((Media) -> Void)?) {
     #if canImport(SGDeletedMessages)
     guard SGDeletedMessages.showDeletedMessages else {

@@ -3,10 +3,24 @@ import Postbox
 import TelegramApi
 import SwiftSignalKit
 import Emoji
+#if canImport(SGSimpleSettings)
+import SGSimpleSettings
+#endif
 
 public enum EnqueueMessageGrouping {
     case none
     case auto
+}
+
+private func mqShouldBlockMessageReadReceipt(peerId: PeerId) -> Bool {
+    #if canImport(SGSimpleSettings)
+    return SGSimpleSettings.shared.shouldBlockMessageReadReceipt(
+        peerIdNamespace: peerId.namespace._internalGetInt32Value(),
+        peerIdId: peerId.id._internalGetInt64Value()
+    )
+    #else
+    return false
+    #endif
 }
 
 public struct EngineMessageReplyQuote: Codable, Equatable {
@@ -93,7 +107,7 @@ public struct EngineMessageReplySubject: Codable, Equatable {
 
 public enum EnqueueMessage {
     case message(text: String, attributes: [MessageAttribute], inlineStickers: [MediaId: Media], mediaReference: AnyMediaReference?, threadId: Int64?, replyToMessageId: EngineMessageReplySubject?, replyToStoryId: StoryId?, localGroupingKey: Int64?, correlationId: Int64?, bubbleUpEmojiOrStickersets: [ItemCollectionId])
-    // MARK: - GLEGram - Support asCopy parameter (like Nicegram)
+    // MARK: - MQGram - Support asCopy parameter (like Nicegram)
     case forward(source: MessageId, threadId: Int64?, grouping: EnqueueMessageGrouping, attributes: [MessageAttribute], correlationId: Int64?, asCopy: Bool = false)
     
     public func withUpdatedReplyToMessageId(_ replyToMessageId: EngineMessageReplySubject?) -> EnqueueMessage {
@@ -261,7 +275,7 @@ private func filterMessageAttributesForOutgoingMessage(_ attributes: [MessageAtt
             return true
         case _ as SuggestedPostMessageAttribute:
             return true
-        // MARK: - GLEGram - Ghost delay
+        // MARK: - MQGram - Ghost delay
         case _ as GhostDelayedSendAttribute:
             return true
         default:
@@ -313,7 +327,7 @@ func opportunisticallyTransformMessageWithMedia(network: Network, postbox: Postb
     |> timeout(2.0, queue: Queue.concurrentDefaultQueue(), alternate: .single(nil))
 }
 
-// MARK: - GLEGram - Support asCopy parameter (like Nicegram)
+// MARK: - MQGram - Support asCopy parameter (like Nicegram)
 private func forwardedMessageToBeReuploaded(transaction: Transaction, id: MessageId, asCopy: Bool = false) -> Message? {
     if let message = transaction.getMessage(id) {
         if message.id.namespace != Namespaces.Message.Cloud || asCopy {
@@ -476,7 +490,7 @@ func enqueueMessages(transaction: Transaction, account: Account, peerId: PeerId,
      * If it is a support account, mark messages as read here as they are
      * not marked as read when chat is opened.
      **/
-    if account.isSupportUser {
+    if account.isSupportUser && !mqShouldBlockMessageReadReceipt(peerId: peerId) {
         let namespace: MessageId.Namespace
         if peerId.namespace == Namespaces.Peer.SecretChat {
             namespace = Namespaces.Message.SecretIncoming
@@ -525,7 +539,7 @@ func enqueueMessages(transaction: Transaction, account: Account, peerId: PeerId,
                         updatedMessages.append((true, .forward(source: replyToMessageId.messageId, threadId: threadId, grouping: .none, attributes: attributes, correlationId: nil, asCopy: false)))
                     }
                 }
-            // MARK: - GLEGram - Support asCopy parameter (like Nicegram)
+            // MARK: - MQGram - Support asCopy parameter (like Nicegram)
             case let .forward(sourceId, threadId, _, _, _, asCopy):
                 if let sourceMessage = forwardedMessageToBeReuploaded(transaction: transaction, id: sourceId, asCopy: asCopy) {
                     var mediaReference: AnyMediaReference?
@@ -534,7 +548,7 @@ func enqueueMessages(transaction: Transaction, account: Account, peerId: PeerId,
                             mediaReference = .standalone(media: media)
                         }
                     }
-                    // MARK: GLEGram - Use groupingKey only if not asCopy (like Nicegram)
+                    // MARK: MQGram - Use groupingKey only if not asCopy (like Nicegram)
                     let localGroupingKey: Int64? = asCopy ? sourceMessage.groupingKey : nil
                     updatedMessages.append((transformedMedia, .message(text: sourceMessage.text, attributes: sourceMessage.attributes, inlineStickers: [:], mediaReference: mediaReference, threadId: threadId, replyToMessageId: threadId.flatMap { EngineMessageReplySubject(messageId: MessageId(peerId: peerId, namespace: Namespaces.Message.Cloud, id: Int32(clamping: $0)), quote: nil, todoItemId: nil) }, replyToStoryId: nil, localGroupingKey: localGroupingKey, correlationId: nil, bubbleUpEmojiOrStickersets: [])))
                     continue outer

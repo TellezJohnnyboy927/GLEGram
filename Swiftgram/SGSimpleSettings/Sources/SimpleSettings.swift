@@ -245,6 +245,9 @@ public class SGSimpleSettings {
         case disableEmojiInteractionStatus
         case disableEmojiAcknowledgementStatus
         case disableMessageReadReceipt
+        // MARK: - MQGram
+        case readAfterAction
+        // MARK: - End MQGram
         case disableStoryReadReceipt
         case disableAllAds
         case hideProxySponsor
@@ -252,6 +255,10 @@ public class SGSimpleSettings {
         case disableScreenshotDetection
         case enableSavingSelfDestructingMessages
         case disableSecretChatBlurOnScreenshot
+        // MARK: - MQGram
+        case disableAutoDeleteMessages
+        case enableFileMimeFix
+        // MARK: - End MQGram
         case enableLocalPremium
         case scrollToTopButtonEnabled
         case fakeLocationEnabled
@@ -443,7 +450,7 @@ public class SGSimpleSettings {
         Keys.duckyAppIconAvailable.rawValue: true,
         Keys.transcriptionBackend.rawValue: TranscriptionBackend.default.rawValue,
         Keys.translationBackend.rawValue: TranslationBackend.default.rawValue,
-        // Default app badge (GLEGram Dark Purple)
+        // Default app badge (MQGram Dark Purple)
         Keys.customAppBadge.rawValue: "SkyAppBadge",
         Keys.canUseNY.rawValue: false,
         Keys.nyStyle.rawValue: NYStyle.default.rawValue,
@@ -480,6 +487,7 @@ public class SGSimpleSettings {
         Keys.disableEmojiInteractionStatus.rawValue: false,
         Keys.disableEmojiAcknowledgementStatus.rawValue: false,
         Keys.disableMessageReadReceipt.rawValue: false,
+        Keys.readAfterAction.rawValue: false,
         Keys.disableStoryReadReceipt.rawValue: false,
         Keys.disableAllAds.rawValue: false,
         Keys.hideProxySponsor.rawValue: false,
@@ -487,6 +495,10 @@ public class SGSimpleSettings {
         Keys.disableScreenshotDetection.rawValue: false,
         Keys.enableSavingSelfDestructingMessages.rawValue: false,
         Keys.disableSecretChatBlurOnScreenshot.rawValue: false,
+        // MARK: - MQGram
+        Keys.disableAutoDeleteMessages.rawValue: false,
+        Keys.enableFileMimeFix.rawValue: false,
+        // MARK: - End MQGram
         Keys.enableLocalPremium.rawValue: false,
         Keys.scrollToTopButtonEnabled.rawValue: true,
         Keys.fakeLocationEnabled.rawValue: false,
@@ -950,6 +962,42 @@ public class SGSimpleSettings {
     @UserDefault(key: Keys.disableMessageReadReceipt.rawValue)
     public var disableMessageReadReceipt: Bool
     
+    // MARK: - MQGram
+    @UserDefault(key: Keys.readAfterAction.rawValue)
+    public var readAfterAction: Bool
+    
+    /// Peer IDs that have had a message sent, so read receipts can be released.
+    private static let readAfterActionSentPeersKey = "sg_readAfterActionSentPeers"
+    
+    public var readAfterActionSentPeers: Set<String> {
+        get {
+            if let data = UserDefaults.standard.data(forKey: Self.readAfterActionSentPeersKey),
+               let array = try? JSONDecoder().decode([String].self, from: data) {
+                return Set(array)
+            }
+            return []
+        }
+        set {
+            if let data = try? JSONEncoder().encode(Array(newValue)) {
+                UserDefaults.standard.set(data, forKey: Self.readAfterActionSentPeersKey)
+            }
+        }
+    }
+    
+    public func markPeerAsSentForReadAfterAction(peerIdNamespace: Int32, peerIdId: Int64) {
+        let key = "\(peerIdNamespace):\(peerIdId)"
+        var set = readAfterActionSentPeers
+        set.insert(key)
+        readAfterActionSentPeers = set
+    }
+    
+    public func shouldBlockReadForReadAfterAction(peerIdNamespace: Int32, peerIdId: Int64) -> Bool {
+        guard readAfterAction else { return false }
+        let key = "\(peerIdNamespace):\(peerIdId)"
+        return !readAfterActionSentPeers.contains(key)
+    }
+    // MARK: - End MQGram
+    
     /// Peer IDs (as "namespace:id") to whom read receipts ARE sent (whitelist). Empty = send to all.
     public var messageReadReceiptsSendToPeerIds: Set<String> {
         get {
@@ -975,6 +1023,41 @@ public class SGSimpleSettings {
         let key = "\(peerIdNamespace):\(peerIdId)"
         return !list.contains(key)
     }
+
+    public func shouldBlockMessageReadReceipt(peerIdNamespace: Int32, peerIdId: Int64) -> Bool {
+        guard disableMessageReadReceipt else { return false }
+        if isPeerExcludedFromPrivacy(peerIdNamespace: peerIdNamespace, peerIdId: peerIdId) {
+            return false
+        }
+        return shouldBlockReadReceiptFor(peerIdNamespace: peerIdNamespace, peerIdId: peerIdId)
+    }
+    
+    // MARK: - MQGram — Privacy exclusions list
+    private static let privacyExclusionPeersKey = "sg_privacyExclusionPeerIds"
+    
+    /// Peer IDs excluded from all ghost/privacy features (read receipts, typing, online, etc.)
+    public var privacyExclusionPeerIds: Set<String> {
+        get {
+            if let data = UserDefaults.standard.data(forKey: Self.privacyExclusionPeersKey),
+               let array = try? JSONDecoder().decode([String].self, from: data) {
+                return Set(array)
+            }
+            return []
+        }
+        set {
+            if let data = try? JSONEncoder().encode(Array(newValue)) {
+                UserDefaults.standard.set(data, forKey: Self.privacyExclusionPeersKey)
+                synchronizeShared()
+            }
+        }
+    }
+    
+    /// Returns true if the peer is excluded from privacy restrictions (ghost mode doesn't apply).
+    public func isPeerExcludedFromPrivacy(peerIdNamespace: Int32, peerIdId: Int64) -> Bool {
+        let key = "\(peerIdNamespace):\(peerIdId)"
+        return privacyExclusionPeerIds.contains(key)
+    }
+    // MARK: - End MQGram
     
     @UserDefault(key: Keys.disableStoryReadReceipt.rawValue)
     public var disableStoryReadReceipt: Bool
@@ -993,6 +1076,15 @@ public class SGSimpleSettings {
     
     @UserDefault(key: Keys.disableSecretChatBlurOnScreenshot.rawValue)
     public var disableSecretChatBlurOnScreenshot: Bool
+
+    // MARK: - MQGram — Anti Auto-Delete (skip timer-based message deletions)
+    @UserDefault(key: Keys.disableAutoDeleteMessages.rawValue)
+    public var disableAutoDeleteMessages: Bool
+
+    // MARK: - MQGram — Fix File Picker (force import mode for sideloaded builds)
+    @UserDefault(key: Keys.enableFileMimeFix.rawValue)
+    public var enableFileMimeFix: Bool
+    // MARK: - End MQGram
     
     @UserDefault(key: Keys.enableLocalPremium.rawValue)
     public var enableLocalPremium: Bool

@@ -29,6 +29,10 @@ GLuint setup_texture(NSString *fileName, UIColor *color)
     
     // 3
     if ([fileName isEqualToString:@"telegram_sphere.png"]) {
+        CGFloat radius = MIN((CGFloat)width, (CGFloat)height) * 0.12f;
+        UIBezierPath *path = [UIBezierPath bezierPathWithRoundedRect:CGRectMake(0, 0, width, height) cornerRadius:radius];
+        CGContextAddPath(spriteContext, path.CGPath);
+        CGContextClip(spriteContext);
         CGContextSetFillColorWithColor(spriteContext, color.CGColor);
         CGContextFillRect(spriteContext, CGRectMake(0, 0, width, height));
     }
@@ -56,6 +60,5 @@ GLuint setup_texture(NSString *fileName, UIColor *color)
     free(spriteData);
     return texName;
 }
-
 
 

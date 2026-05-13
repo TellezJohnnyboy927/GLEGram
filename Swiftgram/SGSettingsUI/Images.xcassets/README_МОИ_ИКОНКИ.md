@@ -1,12 +1,12 @@
-# Куда класть свои иконки (GLEGram)
+# Куда класть свои иконки (MQGram)
 
 Замените файлы в этих папках своими картинками — приложение подхватит их автоматически.
 
-## Шапка экрана GLEGram
+## Шапка экрана MQGram
 
 | Папка | Файл | Назначение |
 |-------|------|------------|
-| `GLEGramSettings.imageset/` | **GLEGramSettings.png** | Большая иконка в шапке экрана GLEGram |
+| `MQGramSettings.imageset/` | **MQGramSettings.png** | Большая иконка в шапке экрана MQGram |
 
 Рекомендуемый размер: около 80×80 pt (или 240×240 px для @3x).
 
@@ -16,10 +16,10 @@
 
 | Папка | Файл | Назначение |
 |-------|------|------------|
-| `GLEGramTabAppearance.imageset/` | **GLEGramTabAppearance.png** | Иконка «Оформление» |
-| `GLEGramTabSecurity.imageset/` | **GLEGramTabSecurity.png** | Иконка «Приватность» |
-| `GLEGramTabPlugins.imageset/` | **GLEGramTabPlugins.png** | Иконка «Твики» |
-| `GLEGramTabOther.imageset/` | **GLEGramTabOther.png** | Иконка «Другие функции» |
+| `MQGramTabAppearance.imageset/` | **MQGramTabAppearance.png** | Иконка «Оформление» |
+| `MQGramTabSecurity.imageset/` | **MQGramTabSecurity.png** | Иконка «Приватность» |
+| `MQGramTabPlugins.imageset/` | **MQGramTabPlugins.png** | Иконка «Твики» |
+| `MQGramTabOther.imageset/` | **MQGramTabOther.png** | Иконка «Другие функции» |
 
 Рекомендуемый размер для иконок в списке: 24×24 pt (72×72 px для @3x). Формат: PNG (можно и PDF в одной шкале).
 
@@ -27,7 +27,7 @@
 
 ## Другие ресурсы
 
-- `GLEGramVerifiedBadge.imageset/` — значок верификации (Galochka.png).
+- `MQGramVerifiedBadge.imageset/` — значок верификации (Galochka.png).
 - `glePlugins/1.imageset/` — иконка по умолчанию для плагинов без своей иконки.
 - `SwiftgramSettings.imageset/`, `SwiftgramPro.imageset/` — иконки пунктов меню настроек.
 

@@ -23,14 +23,14 @@ swift_library(
 #        "//Swiftgram/SGAPI:SGAPI",
         "//Swiftgram/SGAPIToken:SGAPIToken",
         "//Swiftgram/SGSwiftUI:SGSwiftUI",
-        # MARK: GLEGram
-        "//GLEGram/SGDeletedMessages:SGDeletedMessages",
-        "//GLEGram/SGFakeLocation:SGFakeLocation",
-        "//GLEGram/SGSupporters:SGSupporters",
-        "//GLEGram/DoubleBottom:DoubleBottom",
-        "//GLEGram/ChatPassword:ChatPassword",
-        "//GLEGram/VoiceMorpher:VoiceMorpher",
-        # MARK: End GLEGram
+        # MARK: MQGram
+        "//MQGram/SGDeletedMessages:SGDeletedMessages",
+        "//MQGram/SGFakeLocation:SGFakeLocation",
+        "//MQGram/SGSupporters:SGSupporters",
+        "//MQGram/DoubleBottom:DoubleBottom",
+        "//MQGram/ChatPassword:ChatPassword",
+        "//MQGram/VoiceMorpher:VoiceMorpher",
+        # MARK: End MQGram
         "//submodules/SSignalKit/SwiftSignalKit:SwiftSignalKit",
         "//submodules/AsyncDisplayKit:AsyncDisplayKit",
         "//submodules/Display:Display",
