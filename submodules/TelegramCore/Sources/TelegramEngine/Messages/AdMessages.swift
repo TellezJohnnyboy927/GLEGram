@@ -2,6 +2,9 @@ import Foundation
 import Postbox
 import SwiftSignalKit
 import TelegramApi
+#if canImport(SGSimpleSettings)
+import SGSimpleSettings
+#endif
 
 private class AdMessagesHistoryContextImpl {
     final class CachedMessage: Equatable, Codable {
@@ -635,6 +638,12 @@ public class AdMessagesHistoryContext {
     public let messageId: EngineMessage.Id?
     
     public var state: Signal<(interPostInterval: Int32?, messages: [Message], startDelay: Int32?, betweenDelay: Int32?), NoError> {
+        // MARK: - MQGram - block sponsored/ad messages when "Disable all ads" is on
+        #if canImport(SGSimpleSettings)
+        if SGSimpleSettings.shared.disableAllAds {
+            return .single((nil, [], nil, nil))
+        }
+        #endif
         return Signal { subscriber in
             let disposable = MetaDisposable()
             
