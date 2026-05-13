@@ -1581,6 +1581,12 @@ private func extractAccountManagerState(records: AccountRecordsView<TelegramAcco
                         }
                     }
                     
+                    // MARK: - MQGram — Sponsor modal on first launch of this session
+                    Queue.mainQueue().after(1.5) {
+                        self.presentMQGramSponsorModal(on: context.rootController)
+                    }
+                    // MARK: - End MQGram
+                    
                 }))
             } else {
                 self.mainWindow.viewController = nil
@@ -3761,3 +3767,105 @@ extension AppDelegate {
 //        }
     }
 }
+
+// MARK: - MQGram — Sponsor modal
+extension AppDelegate {
+    func presentMQGramSponsorModal(on rootController: TelegramRootController) {
+        let dimView = UIView(frame: rootController.view.bounds)
+        dimView.backgroundColor = UIColor.black.withAlphaComponent(0.6)
+        dimView.autoresizingMask = [.flexibleWidth, .flexibleHeight]
+        dimView.alpha = 0
+
+        let cardWidth: CGFloat = min(rootController.view.bounds.width - 48, 320)
+        let card = UIView()
+        card.backgroundColor = UIColor(rgb: 0x1C1C2E)
+        card.layer.cornerRadius = 20
+        card.layer.masksToBounds = true
+        card.translatesAutoresizingMaskIntoConstraints = false
+
+        let titleLabel = UILabel()
+        titleLabel.text = "MQGram"
+        titleLabel.font = UIFont.boldSystemFont(ofSize: 22)
+        titleLabel.textColor = .white
+        titleLabel.textAlignment = .center
+        titleLabel.translatesAutoresizingMaskIntoConstraints = false
+
+        let subtitleLabel = UILabel()
+        subtitleLabel.text = "Privacy messenger"
+        subtitleLabel.font = UIFont.systemFont(ofSize: 14)
+        subtitleLabel.textColor = UIColor(rgb: 0xA0A0B8)
+        subtitleLabel.textAlignment = .center
+        subtitleLabel.translatesAutoresizingMaskIntoConstraints = false
+
+        func makeButton(title: String, bgColor: UIColor) -> UIButton {
+            let btn = UIButton(type: .system)
+            btn.setTitle(title, for: .normal)
+            btn.titleLabel?.font = UIFont.systemFont(ofSize: 16, weight: .semibold)
+            btn.setTitleColor(.white, for: .normal)
+            btn.backgroundColor = bgColor
+            btn.layer.cornerRadius = 12
+            btn.translatesAutoresizingMaskIntoConstraints = false
+            btn.heightAnchor.constraint(equalToConstant: 44).isActive = true
+            return btn
+        }
+
+        let mqgramBtn = makeButton(title: "MQGram Channel", bgColor: UIColor(rgb: 0x6C3FBF))
+        let vpnBtn = makeButton(title: "VPN Channel", bgColor: UIColor(rgb: 0x3F8FBF))
+        let closeBtn = makeButton(title: "Close", bgColor: UIColor(rgb: 0x3A3A4E))
+
+        let stack = UIStackView(arrangedSubviews: [titleLabel, subtitleLabel, mqgramBtn, vpnBtn, closeBtn])
+        stack.axis = .vertical
+        stack.spacing = 12
+        stack.translatesAutoresizingMaskIntoConstraints = false
+        stack.setCustomSpacing(4, after: titleLabel)
+        stack.setCustomSpacing(20, after: subtitleLabel)
+
+        card.addSubview(stack)
+        dimView.addSubview(card)
+
+        NSLayoutConstraint.activate([
+            stack.topAnchor.constraint(equalTo: card.topAnchor, constant: 28),
+            stack.leadingAnchor.constraint(equalTo: card.leadingAnchor, constant: 20),
+            stack.trailingAnchor.constraint(equalTo: card.trailingAnchor, constant: -20),
+            stack.bottomAnchor.constraint(equalTo: card.bottomAnchor, constant: -24),
+            card.centerXAnchor.constraint(equalTo: dimView.centerXAnchor),
+            card.centerYAnchor.constraint(equalTo: dimView.centerYAnchor),
+            card.widthAnchor.constraint(equalToConstant: cardWidth),
+        ])
+
+        let dismiss: () -> Void = {
+            UIView.animate(withDuration: 0.25, animations: {
+                dimView.alpha = 0
+                card.transform = CGAffineTransform(scaleX: 0.9, y: 0.9)
+            }, completion: { _ in
+                dimView.removeFromSuperview()
+            })
+        }
+
+        mqgramBtn.addAction(UIAction { _ in
+            dismiss()
+            if let url = URL(string: "https://t.me/MQGram") {
+                UIApplication.shared.open(url, options: [:], completionHandler: nil)
+            }
+        }, for: .touchUpInside)
+
+        vpnBtn.addAction(UIAction { _ in
+            dismiss()
+            if let url = URL(string: "https://t.me/stivenvpn") {
+                UIApplication.shared.open(url, options: [:], completionHandler: nil)
+            }
+        }, for: .touchUpInside)
+
+        closeBtn.addAction(UIAction { _ in
+            dismiss()
+        }, for: .touchUpInside)
+
+        rootController.view.addSubview(dimView)
+        card.transform = CGAffineTransform(scaleX: 0.85, y: 0.85)
+        UIView.animate(withDuration: 0.35, delay: 0, usingSpringWithDamping: 0.8, initialSpringVelocity: 0, options: [], animations: {
+            dimView.alpha = 1
+            card.transform = .identity
+        })
+    }
+}
+// MARK: - End MQGram

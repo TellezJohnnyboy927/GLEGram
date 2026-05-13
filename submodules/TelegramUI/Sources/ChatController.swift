@@ -8509,6 +8509,12 @@ public final class ChatControllerImpl: TelegramBaseController, ChatController, G
             return
         }
         
+        // MARK: - MQGram — Mark peer as sent for readAfterAction, then flush pending read index
+        if SGSimpleSettings.shared.readAfterAction {
+            SGSimpleSettings.shared.markPeerAsSentForReadAfterAction(peerIdNamespace: peerId.namespace._internalGetInt32Value(), peerIdId: peerId.id._internalGetInt64Value())
+        }
+        // MARK: - End MQGram
+        
         let _ = (self.shouldDivertMessagesToScheduled(messages: messages)
         |> deliverOnMainQueue).startStandalone(next: { [weak self] shouldDivert in
             guard let self else {

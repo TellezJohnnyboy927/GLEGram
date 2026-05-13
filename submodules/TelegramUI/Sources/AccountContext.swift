@@ -624,6 +624,16 @@ public final class AccountContextImpl: AccountContext {
     }
     
     public func applyMaxReadIndex(for location: ChatLocation, contextHolder: Atomic<ChatLocationContextHolder?>, messageIndex: MessageIndex) {
+        // MARK: - MQGram — Block read receipts unless peer is excluded from privacy
+        if case .peer(let peerId) = location {
+            let ns = peerId.namespace._internalGetInt32Value()
+            let id = peerId.id._internalGetInt64Value()
+            let excluded = SGSimpleSettings.shared.isPeerExcludedFromPrivacy(peerIdNamespace: ns, peerIdId: id)
+            if !excluded && SGSimpleSettings.shared.shouldBlockReadForReadAfterAction(peerIdNamespace: ns, peerIdId: id) {
+                return
+            }
+        }
+        // MARK: - End MQGram
         switch location {
         case .peer:
             let _ = self.engine.messages.applyMaxReadIndexInteractively(index: messageIndex).start()

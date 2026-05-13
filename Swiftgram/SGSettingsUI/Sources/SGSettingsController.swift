@@ -135,6 +135,9 @@ enum SGBoolSetting: String {
     case disableEmojiInteractionStatus
     case disableEmojiAcknowledgementStatus
     case disableMessageReadReceipt
+    // MARK: - MQGram
+    case readAfterAction
+    // MARK: - End MQGram
     case disableStoryReadReceipt
     case disableAllAds
     case hideProxySponsor
