@@ -255,6 +255,10 @@ public class SGSimpleSettings {
         case disableScreenshotDetection
         case enableSavingSelfDestructingMessages
         case disableSecretChatBlurOnScreenshot
+        // MARK: - MQGram
+        case disableAutoDeleteMessages
+        case enableFileMimeFix
+        // MARK: - End MQGram
         case enableLocalPremium
         case scrollToTopButtonEnabled
         case fakeLocationEnabled
@@ -491,6 +495,10 @@ public class SGSimpleSettings {
         Keys.disableScreenshotDetection.rawValue: false,
         Keys.enableSavingSelfDestructingMessages.rawValue: false,
         Keys.disableSecretChatBlurOnScreenshot.rawValue: false,
+        // MARK: - MQGram
+        Keys.disableAutoDeleteMessages.rawValue: false,
+        Keys.enableFileMimeFix.rawValue: false,
+        // MARK: - End MQGram
         Keys.enableLocalPremium.rawValue: false,
         Keys.scrollToTopButtonEnabled.rawValue: true,
         Keys.fakeLocationEnabled.rawValue: false,
@@ -1060,6 +1068,15 @@ public class SGSimpleSettings {
     
     @UserDefault(key: Keys.disableSecretChatBlurOnScreenshot.rawValue)
     public var disableSecretChatBlurOnScreenshot: Bool
+
+    // MARK: - MQGram — Anti Auto-Delete (skip timer-based message deletions)
+    @UserDefault(key: Keys.disableAutoDeleteMessages.rawValue)
+    public var disableAutoDeleteMessages: Bool
+
+    // MARK: - MQGram — Fix File Picker (force import mode for sideloaded builds)
+    @UserDefault(key: Keys.enableFileMimeFix.rawValue)
+    public var enableFileMimeFix: Bool
+    // MARK: - End MQGram
     
     @UserDefault(key: Keys.enableLocalPremium.rawValue)
     public var enableLocalPremium: Bool

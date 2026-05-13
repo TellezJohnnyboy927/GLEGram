@@ -354,43 +354,22 @@ private func mqGramEntries(presentationData: PresentationData, contentSettingsCo
     
     entries.append(.searchInput(id: id.count, section: .search, title: NSAttributedString(string: "🔍"), text: state.searchQuery ?? "", placeholder: strings.Common_Search))
     
-    // MARK: Messages
-    entries.append(.header(id: id.count, section: .messages, text: i18n("Settings.DeletedMessages.Header", lang), badge: nil))
+    // MARK: - MQGram — Privacy tab (clean layout: Read Receipts / Ghost Mode / Privacy & Extras / Fake Location)
+    _ = mediaBoxBasePath // kept for signature compatibility; deleted-messages UI removed.
 
-    let showDeleted = SGSimpleSettings.shared.showDeletedMessages
-    entries.append(.toggle(id: id.count, section: .messages, settingName: .showDeletedMessages, value: showDeleted, text: i18n("Settings.DeletedMessages.Save", lang), enabled: true))
-    entries.append(.notice(id: id.count, section: .messages, text: i18n("Settings.DeletedMessages.Save.Notice", lang)))
+    // MARK: Read Receipts
+    entries.append(.header(id: id.count, section: .readReceipts, text: (lang == "ru" ? "ОТЧЁТЫ О ПРОЧТЕНИИ" : "READ RECEIPTS"), badge: nil))
+    let readReceiptMessagesTitle = (lang == "ru" ? "Скрыть прочтение сообщений" : "Disable message read receipts")
+    let readReceiptMessagesNotice = (lang == "ru" ? "Собеседники не увидят, что вы прочитали их сообщения." : "Others won't see that you've read their messages.")
+    entries.append(.toggle(id: id.count, section: .readReceipts, settingName: .disableMessageReadReceipt, value: SGSimpleSettings.shared.disableMessageReadReceipt, text: readReceiptMessagesTitle, enabled: true))
+    entries.append(.notice(id: id.count, section: .readReceipts, text: readReceiptMessagesNotice))
+    let readReceiptStoriesTitle = (lang == "ru" ? "Скрыть просмотр историй" : "Disable story view receipts")
+    let readReceiptStoriesNotice = (lang == "ru" ? "Авторы историй не увидят, что вы их посмотрели." : "Others won't see that you've viewed their stories.")
+    entries.append(.toggle(id: id.count, section: .readReceipts, settingName: .disableStoryReadReceipt, value: SGSimpleSettings.shared.disableStoryReadReceipt, text: readReceiptStoriesTitle, enabled: true))
+    entries.append(.notice(id: id.count, section: .readReceipts, text: readReceiptStoriesNotice))
 
-    entries.append(.toggle(id: id.count, section: .messages, settingName: .saveDeletedMessagesMedia, value: SGSimpleSettings.shared.saveDeletedMessagesMedia, text: i18n("Settings.DeletedMessages.SaveMedia", lang), enabled: showDeleted))
-    entries.append(.toggle(id: id.count, section: .messages, settingName: .saveDeletedMessagesReactions, value: SGSimpleSettings.shared.saveDeletedMessagesReactions, text: i18n("Settings.DeletedMessages.SaveReactions", lang), enabled: showDeleted))
-    entries.append(.toggle(id: id.count, section: .messages, settingName: .saveDeletedMessagesForBots, value: SGSimpleSettings.shared.saveDeletedMessagesForBots, text: i18n("Settings.DeletedMessages.SaveForBots", lang), enabled: showDeleted))
-    let storageSizeFormatted = ByteCountFormatter.string(fromByteCount: SGDeletedMessages.storageSizeBytes(mediaBoxBasePath: mediaBoxBasePath), countStyle: .file)
-    entries.append(.notice(id: id.count, section: .messages, text: i18n("Settings.DeletedMessages.StorageSize", lang) + ": " + storageSizeFormatted))
-    entries.append(.disclosure(id: id.count, section: .messages, link: .savedDeletedMessagesList, text: (lang == "ru" ? "Просмотреть сохранённые" : "View saved messages")))
-    entries.append(.action(id: id.count, section: .messages, actionType: "clearDeletedMessages" as AnyHashable, text: i18n("Settings.DeletedMessages.Clear", lang), kind: .destructive))
-    
-    let saveEditHistoryTitle = (lang == "ru" ? "Сохранять историю редактирования" : "Save edit history")
-    let saveEditHistoryNotice = (lang == "ru"
-                                 ? "Сохраняет оригинальный текст сообщений при редактировании (в т.ч. чужих)."
-                                 : "Keeps original message text when messages are edited (including from others).")
-    entries.append(.toggle(id: id.count, section: .messages, settingName: .saveEditHistory, value: SGSimpleSettings.shared.saveEditHistory, text: saveEditHistoryTitle, enabled: true))
-    entries.append(.notice(id: id.count, section: .messages, text: saveEditHistoryNotice))
-
-    let localEditTitle = (lang == "ru" ? "Редактировать сообщения собеседника (локально)" : "Edit other's messages (local only)")
-    let localEditNotice = (lang == "ru"
-                          ? "В контекстном меню входящих сообщений появится «Редактировать». Изменения видны только на вашем устройстве."
-                          : "Adds «Edit» to context menu for incoming messages. Changes are visible only on your device.")
-    entries.append(.toggle(id: id.count, section: .messages, settingName: .enableLocalMessageEditing, value: SGSimpleSettings.shared.enableLocalMessageEditing, text: localEditTitle, enabled: true))
-    entries.append(.notice(id: id.count, section: .messages, text: localEditNotice))
-    
-    // MARK: Chat list / Read all
-    entries.append(.header(id: id.count, section: .chatList, text: i18n("READ_ALL_HEADER", lang), badge: nil))
-    entries.append(.action(id: id.count, section: .chatList, actionType: "markAllReadLocal" as AnyHashable, text: i18n("READ_ALL_LOCAL_TITLE", lang), kind: .generic))
-    entries.append(.notice(id: id.count, section: .chatList, text: i18n("READ_ALL_LOCAL_SUBTITLE", lang)))
-    entries.append(.action(id: id.count, section: .chatList, actionType: "markAllReadServer" as AnyHashable, text: i18n("READ_ALL_SERVER_TITLE", lang), kind: .generic))
-    entries.append(.notice(id: id.count, section: .chatList, text: i18n("READ_ALL_SERVER_SUBTITLE", lang)))
-    // MARK: Online status / Ghost mode
-    entries.append(.header(id: id.count, section: .onlineStatus, text: (lang == "ru" ? "ОНЛАЙН-СТАТУС" : "ONLINE STATUS"), badge: nil))
+    // MARK: Ghost Mode
+    entries.append(.header(id: id.count, section: .onlineStatus, text: (lang == "ru" ? "GHOST MODE" : "GHOST MODE"), badge: nil))
     entries.append(.toggle(id: id.count, section: .onlineStatus, settingName: .disableOnlineStatus, value: SGSimpleSettings.shared.disableOnlineStatus, text: i18n("DISABLE_ONLINE_STATUS_TITLE", lang), enabled: true))
     entries.append(.notice(id: id.count, section: .onlineStatus, text: i18n("DISABLE_ONLINE_STATUS_SUBTITLE", lang)))
     let delaySeconds = SGSimpleSettings.shared.ghostModeMessageSendDelaySeconds
@@ -432,102 +411,55 @@ private func mqGramEntries(presentationData: PresentationData, contentSettingsCo
     entries.append(.toggle(id: id.count, section: .onlineStatus, settingName: .disableEmojiAcknowledgementStatus, value: SGSimpleSettings.shared.disableEmojiAcknowledgementStatus, text: i18n("DISABLE_EMOJI_ACKNOWLEDGEMENT_STATUS_TITLE", lang), enabled: true))
     entries.append(.notice(id: id.count, section: .onlineStatus, text: i18n("DISABLE_EMOJI_ACKNOWLEDGEMENT_STATUS_SUBTITLE", lang)))
     
-    // MARK: Read receipts
-    entries.append(.header(id: id.count, section: .readReceipts, text: (lang == "ru" ? "ОТЧЁТЫ О ПРОЧТЕНИИ" : "READ RECEIPTS"), badge: nil))
-    let disableMessageReadReceiptTitle = (lang == "ru" ? "Отчёты: сообщения" : i18n("DISABLE_MESSAGE_READ_RECEIPT_TITLE", lang))
-    entries.append(.toggle(id: id.count, section: .readReceipts, settingName: .disableMessageReadReceipt, value: SGSimpleSettings.shared.disableMessageReadReceipt, text: disableMessageReadReceiptTitle, enabled: true))
-    entries.append(.notice(id: id.count, section: .readReceipts, text: i18n("DISABLE_MESSAGE_READ_RECEIPT_SUBTITLE", lang)))
-    let sendToCount = SGSimpleSettings.shared.messageReadReceiptsSendToPeerIds.count
-    let sendToText = (lang == "ru"
-        ? "Отправлять отчёты выбранным" + (sendToCount > 0 ? " (\(sendToCount))" : "")
-        : "Send receipts to selected" + (sendToCount > 0 ? " (\(sendToCount))" : ""))
-    entries.append(.disclosure(id: id.count, section: .readReceipts, link: .readReceiptsExclusions, text: sendToText))
-    let sendToNotice = (lang == "ru"
-        ? "Пустой список = никому не отправлять. Иначе — только выбранным."
-        : "Empty list = send to no one. Otherwise — only to selected.")
-    entries.append(.notice(id: id.count, section: .readReceipts, text: sendToNotice))
-    // MARK: - MQGram — Read after action toggle
-    let readAfterActionTitle = (lang == "ru" ? "Прочитать после действий" : "Read after action")
-    entries.append(.toggle(id: id.count, section: .readReceipts, settingName: .readAfterAction, value: SGSimpleSettings.shared.readAfterAction, text: readAfterActionTitle, enabled: true))
-    let readAfterActionNotice = (lang == "ru"
-        ? "Отчёт о прочтении отправится только после отправки сообщения в этот чат."
-        : "Read receipt is sent only after you send a message in the chat.")
-    entries.append(.notice(id: id.count, section: .readReceipts, text: readAfterActionNotice))
-    // MARK: - End MQGram
+    // MARK: Privacy & Extras
+    entries.append(.header(id: id.count, section: .content, text: (lang == "ru" ? "ПРИВАТНОСТЬ И ДОПОЛНЕНИЯ" : "PRIVACY & EXTRAS"), badge: nil))
 
-    let disableStoryReadReceiptTitle = (lang == "ru" ? "Отчёты: истории" : i18n("DISABLE_STORY_READ_RECEIPT_TITLE", lang))
-    entries.append(.toggle(id: id.count, section: .readReceipts, settingName: .disableStoryReadReceipt, value: SGSimpleSettings.shared.disableStoryReadReceipt, text: disableStoryReadReceiptTitle, enabled: true))
-    entries.append(.notice(id: id.count, section: .readReceipts, text: i18n("DISABLE_STORY_READ_RECEIPT_SUBTITLE", lang)))
+    let antiEditTitle = (lang == "ru" ? "Сохранять оригинал при редактировании" : "Save original edited messages")
+    let antiEditNotice = (lang == "ru" ? "Когда собеседник редактирует сообщение, вы видите первоначальный текст." : "Keeps the original message text when someone edits it.")
+    entries.append(.toggle(id: id.count, section: .content, settingName: .saveEditHistory, value: SGSimpleSettings.shared.saveEditHistory, text: antiEditTitle, enabled: true))
+    entries.append(.notice(id: id.count, section: .content, text: antiEditNotice))
 
-    // MARK: - MQGram — Privacy exclusions
-    let privacyExclusionsCount = SGSimpleSettings.shared.privacyExclusionPeerIds.count
-    let privacyExclusionsTitle = (lang == "ru"
-        ? "Исключения приватности" + (privacyExclusionsCount > 0 ? " (\(privacyExclusionsCount))" : "")
-        : "Privacy exclusions" + (privacyExclusionsCount > 0 ? " (\(privacyExclusionsCount))" : ""))
-    entries.append(.disclosure(id: id.count, section: .readReceipts, link: .privacyExclusions, text: privacyExclusionsTitle))
-    let privacyExclusionsNotice = (lang == "ru"
-        ? "Выбранные контакты не подвержены ghost-функциям: отчёты, статус, набор."
-        : "Selected contacts are excluded from ghost features: receipts, status, typing.")
-    entries.append(.notice(id: id.count, section: .readReceipts, text: privacyExclusionsNotice))
-    // MARK: - End MQGram
+    let antiRevokeTitle = (lang == "ru" ? "Сохранять удалённые сообщения" : "Save deleted messages")
+    let antiRevokeNotice = (lang == "ru" ? "Удалённые отправителем сообщения остаются у вас в чате." : "Messages stay in your chat after the sender deletes them.")
+    entries.append(.toggle(id: id.count, section: .content, settingName: .showDeletedMessages, value: SGSimpleSettings.shared.showDeletedMessages, text: antiRevokeTitle, enabled: true))
+    entries.append(.notice(id: id.count, section: .content, text: antiRevokeNotice))
 
-    // MARK: - MQGram — Double Bottom
-    let doubleBottomTitle = (lang == "ru" ? "Двойное дно" : "Double Bottom")
-    entries.append(.disclosure(id: id.count, section: .readReceipts, link: .doubleBottom, text: doubleBottomTitle))
+    let antiSelfDestructTitle = (lang == "ru" ? "Просмотр исчезающих медиа без таймера" : "View disappearing media freely")
+    let antiSelfDestructNotice = (lang == "ru" ? "Открывает одноразовые фото и видео без запуска таймера самоуничтожения." : "Opens one-time photos and videos without starting the self-destruct timer.")
+    entries.append(.toggle(id: id.count, section: .content, settingName: .enableSavingSelfDestructingMessages, value: SGSimpleSettings.shared.enableSavingSelfDestructingMessages, text: antiSelfDestructTitle, enabled: true))
+    entries.append(.notice(id: id.count, section: .content, text: antiSelfDestructNotice))
 
-    // MARK: - MQGram — Chat Password
-    let chatPasswordTitle = (lang == "ru" ? "Пароль на чат" : "Chat Password")
-    entries.append(.disclosure(id: id.count, section: .readReceipts, link: .chatPassword, text: chatPasswordTitle))
+    let antiAutoDeleteTitle = (lang == "ru" ? "Сохранять сообщения с авто-удалением" : "Save Auto-Delete Messages")
+    let antiAutoDeleteNotice = (lang == "ru" ? "В чатах с автоудалением (1 день, 7 дней и т.п.) сообщения не будут стираться после истечения таймера." : "Prevents messages in chats with auto-delete (1 day, 7 days, etc.) from being removed when the timer expires.")
+    entries.append(.toggle(id: id.count, section: .content, settingName: .disableAutoDeleteMessages, value: SGSimpleSettings.shared.disableAutoDeleteMessages, text: antiAutoDeleteTitle, enabled: true))
+    entries.append(.notice(id: id.count, section: .content, text: antiAutoDeleteNotice))
 
-    // MARK: Content / security / ads
-    entries.append(.header(id: id.count, section: .content, text: (lang == "ru" ? "КОНТЕНТ И БЕЗОПАСНОСТЬ" : "CONTENT & SECURITY"), badge: nil))
-    let disableAllAdsTitle = (lang == "ru" ? "Отключить рекламу" : i18n("DISABLE_ALL_ADS_TITLE", lang))
-    entries.append(.toggle(id: id.count, section: .content, settingName: .disableAllAds, value: SGSimpleSettings.shared.disableAllAds, text: disableAllAdsTitle, enabled: true))
-    entries.append(.notice(id: id.count, section: .content, text: i18n("DISABLE_ALL_ADS_SUBTITLE", lang)))
-    let hideProxySponsorTitle = (lang == "ru" ? "Скрыть спонсора прокси" : i18n("HIDE_PROXY_SPONSOR_TITLE", lang))
-    entries.append(.toggle(id: id.count, section: .content, settingName: .hideProxySponsor, value: SGSimpleSettings.shared.hideProxySponsor, text: hideProxySponsorTitle, enabled: true))
-    entries.append(.notice(id: id.count, section: .content, text: i18n("HIDE_PROXY_SPONSOR_SUBTITLE", lang)))
-    let enableSavingProtectedTitle = (lang == "ru" ? "Сохранять защищённый контент" : i18n("ENABLE_SAVING_PROTECTED_CONTENT_TITLE", lang))
-    entries.append(.toggle(id: id.count, section: .content, settingName: .enableSavingProtectedContent, value: SGSimpleSettings.shared.enableSavingProtectedContent, text: enableSavingProtectedTitle, enabled: true))
-    entries.append(.notice(id: id.count, section: .content, text: i18n("ENABLE_SAVING_PROTECTED_CONTENT_SUBTITLE", lang)))
-    let enableSavingSelfDestructTitle = (lang == "ru" ? "Сохранять самоуничтож." : i18n("ENABLE_SAVING_SELF_DESTRUCTING_MESSAGES_TITLE", lang))
-    entries.append(.toggle(id: id.count, section: .content, settingName: .enableSavingSelfDestructingMessages, value: SGSimpleSettings.shared.enableSavingSelfDestructingMessages, text: enableSavingSelfDestructTitle, enabled: true))
-    entries.append(.notice(id: id.count, section: .content, text: i18n("ENABLE_SAVING_SELF_DESTRUCTING_MESSAGES_SUBTITLE", lang)))
-    let disableScreenshotDetectionTitle = (lang == "ru" ? "Скрыть скриншоты" : i18n("DISABLE_SCREENSHOT_DETECTION_TITLE", lang))
-    entries.append(.toggle(id: id.count, section: .content, settingName: .disableScreenshotDetection, value: SGSimpleSettings.shared.disableScreenshotDetection, text: disableScreenshotDetectionTitle, enabled: true))
-    entries.append(.notice(id: id.count, section: .content, text: i18n("DISABLE_SCREENSHOT_DETECTION_SUBTITLE", lang)))
-    let disableSecretBlurTitle = (lang == "ru" ? "Не размывать секретные" : i18n("DISABLE_SECRET_CHAT_BLUR_ON_SCREENSHOT_TITLE", lang))
-    entries.append(.toggle(id: id.count, section: .content, settingName: .disableSecretChatBlurOnScreenshot, value: SGSimpleSettings.shared.disableSecretChatBlurOnScreenshot, text: disableSecretBlurTitle, enabled: true))
-    entries.append(.notice(id: id.count, section: .content, text: i18n("DISABLE_SECRET_CHAT_BLUR_ON_SCREENSHOT_SUBTITLE", lang)))
-    
-    // MARK: 18+ / Sensitive content (server-side)
-    if let contentSettingsConfiguration {
-        let canAdjust = contentSettingsConfiguration.canAdjustSensitiveContent
-        let sensitiveTitle = (lang == "ru" ? "Разрешить 18+ контент" : presentationData.strings.Settings_SensitiveContent)
-        let sensitiveInfo = presentationData.strings.Settings_SensitiveContentInfo
-        entries.append(.toggle(
-            id: id.count,
-            section: .content,
-            settingName: .sensitiveContentEnabled,
-            value: contentSettingsConfiguration.sensitiveContentEnabled,
-            text: sensitiveTitle,
-            enabled: canAdjust
-        ))
-        entries.append(.notice(id: id.count, section: .content, text: canAdjust ? sensitiveInfo : (lang == "ru" ? "Сервер Telegram не разрешает менять эту настройку для данного аккаунта." : "Telegram server does not allow changing this setting for this account.")))
-    } else {
-        // Configuration not loaded yet — show disabled placeholder.
-        let sensitiveTitle = (lang == "ru" ? "Разрешить 18+ контент" : "Sensitive content")
-        entries.append(.toggle(
-            id: id.count,
-            section: .content,
-            settingName: .sensitiveContentEnabled,
-            value: false,
-            text: sensitiveTitle,
-            enabled: false
-        ))
-        entries.append(.notice(id: id.count, section: .content, text: (lang == "ru" ? "Загрузка настроек… (нужен доступ к серверу Telegram)" : "Loading settings… (requires Telegram server access)")))
-    }
-    
+    let antiScreenshotTitle = (lang == "ru" ? "Скриншоты без уведомлений" : "Disable screenshot notifications")
+    let antiScreenshotNotice = (lang == "ru" ? "Делайте скриншоты в секретных чатах и защищённых каналах без уведомления собеседника." : "Take screenshots in secret chats and protected channels without alerting the other side.")
+    entries.append(.toggle(id: id.count, section: .content, settingName: .disableScreenshotDetection, value: SGSimpleSettings.shared.disableScreenshotDetection, text: antiScreenshotTitle, enabled: true))
+    entries.append(.notice(id: id.count, section: .content, text: antiScreenshotNotice))
+
+    let disableAdsTitle = (lang == "ru" ? "Отключить всю рекламу" : "Disable all ads")
+    let disableAdsNotice = (lang == "ru" ? "Убирает спонсорские сообщения и рекламный контент из приложения." : "Removes sponsored messages and promotional content from the app.")
+    entries.append(.toggle(id: id.count, section: .content, settingName: .disableAllAds, value: SGSimpleSettings.shared.disableAllAds, text: disableAdsTitle, enabled: true))
+    entries.append(.notice(id: id.count, section: .content, text: disableAdsNotice))
+
+    let saveProtectedTitle = (lang == "ru" ? "Сохранять защищённый контент" : "Enable saving protected content")
+    let saveProtectedNotice = (lang == "ru" ? "Обход ограничений пересылки — сохраняйте и пересылайте медиа из защищённых чатов и каналов." : "Bypasses forwarding restrictions — save and forward media from protected chats and channels.")
+    entries.append(.toggle(id: id.count, section: .content, settingName: .enableSavingProtectedContent, value: SGSimpleSettings.shared.enableSavingProtectedContent, text: saveProtectedTitle, enabled: true))
+    entries.append(.notice(id: id.count, section: .content, text: saveProtectedNotice))
+
+    _ = contentSettingsConfiguration // sensitive-content toggle moved out of Privacy tab
+
+    // MARK: MISC (Fix File Picker)
+    entries.append(.header(id: id.count, section: .content, text: (lang == "ru" ? "ПРОЧЕЕ" : "MISC"), badge: nil))
+    let fixFilePickerTitle = (lang == "ru" ? "Починить выбор файлов" : "Fix File Picker")
+    let fixFilePickerNotice = (lang == "ru" ? "Исправляет проблему, когда невозможно выбрать файлы из приложения «Файлы» на sideloaded-сборках. Переключает режим выбора с .open на .import (копирует файл в песочницу приложения)." : "Fixes the issue where you can't pick files from the Files app on sideloaded versions. Switches the picker mode from .open to .import (copies the file into the app sandbox).")
+    entries.append(.toggle(id: id.count, section: .content, settingName: .enableFileMimeFix, value: SGSimpleSettings.shared.enableFileMimeFix, text: fixFilePickerTitle, enabled: true))
+    entries.append(.notice(id: id.count, section: .content, text: fixFilePickerNotice))
+    let clearFilePickerCacheTitle = (lang == "ru" ? "Очистить кэш выбора файлов" : "Clear File Picker Cache")
+    entries.append(.action(id: id.count, section: .content, actionType: "clearFilePickerCache" as AnyHashable, text: clearFilePickerCacheTitle, kind: .destructive))
+
     // MARK: Local premium
     entries.append(.header(id: id.count, section: .localPremium, text: i18n("Settings.Other.LocalPremium", lang), badge: nil))
     entries.append(.toggle(id: id.count, section: .localPremium, settingName: .enableLocalPremium, value: SGSimpleSettings.shared.enableLocalPremium, text: i18n("Settings.Other.EnableLocalPremium", lang), enabled: true))
@@ -641,15 +573,6 @@ private func mqGramEntries(presentationData: PresentationData, contentSettingsCo
         let noCoordsText = (lang == "ru" ? "Координаты не выбраны. Нажмите 'Выбрать местоположение' для настройки." : "No coordinates selected. Tap 'Pick Location' to configure.")
         entries.append(.notice(id: id.count, section: .fakeLocation, text: noCoordsText))
     }
-    
-    // MARK: Подглядеть онлайн (Peek online)
-    entries.append(.header(id: id.count, section: .onlineStatusRecording, text: (lang == "ru" ? "ПОДГЛЯДЕТЬ ОНЛАЙН" : "PEEK ONLINE"), badge: nil))
-    let peekOnlineTitle = (lang == "ru" ? "Включить «Подглядеть онлайн»" : "Enable «Peek online»")
-    let peekOnlineNotice = (lang == "ru"
-        ? "Эмулирует возможность Premium «Время захода»: показывает последний онлайн у тех, кто не скрывал время захода, но скрыл его от вас. Пользователи с надписью «когда?» в профиле — время можно подсмотреть. Подписчикам Premium не нужно. Принцип: 1) Если аккаунтов несколько — статус может быть взят через другой аккаунт (мост). 2) Краткосрочная инверсия: на долю секунды «Видно всем» → фиксируется и показывается статус → настройки возвращаются."
-        : "Emulates Premium «Last seen»: shows last online for users who did not hide it from everyone but hid it from you. Users with «when?» in profile can be peeked. Not needed for Premium subscribers. How: 1) With multiple accounts, status may be fetched via another account (bridge). 2) Short inversion: «Visible to everyone» for a fraction of a second → status captured and shown → settings restored.")
-    entries.append(.toggle(id: id.count, section: .onlineStatusRecording, settingName: .enableOnlineStatusRecording, value: SGSimpleSettings.shared.enableOnlineStatusRecording, text: peekOnlineTitle, enabled: true))
-    entries.append(.notice(id: id.count, section: .onlineStatusRecording, text: peekOnlineNotice))
     
     // MARK: Gated features — hide toggles that are gated and not unlocked
     let filteredEntries = filterGatedFeatures(entries: entries)
@@ -1279,6 +1202,45 @@ public func mqGramSettingsController(context: AccountContext) -> ViewController 
                         presentControllerImpl?(OverlayStatusController(theme: presentationData.theme, type: .success), nil)
                     })
             }
+
+            // MARK: - MQGram — Clear File Picker Cache
+            if actionString == "clearFilePickerCache" {
+                let presentationData = context.sharedContext.currentPresentationData.with { $0 }
+                let confirmTitle = (presentationData.strings.baseLanguageCode == "ru" ? "Очистить кэш" : "Clear cache")
+                let confirmText = (presentationData.strings.baseLanguageCode == "ru" ? "Удалить кэш файлового пикера? Это удалит все временные импортированные файлы." : "Clear the file picker cache? This removes all temporary imported files.")
+                let alertController = textAlertController(
+                    context: context,
+                    title: confirmTitle,
+                    text: confirmText,
+                    actions: [
+                        TextAlertAction(type: .destructiveAction, title: presentationData.strings.Common_OK, action: {
+                            DispatchQueue.global(qos: .background).async {
+                                let fm = FileManager.default
+                                let tmpDir = NSTemporaryDirectory()
+                                if let contents = try? fm.contentsOfDirectory(atPath: tmpDir) {
+                                    for name in contents where name.lowercased().contains("filepicker") || name.lowercased().contains("documentpicker") || name.lowercased().contains("com.apple.uikit.shortcuts") {
+                                        try? fm.removeItem(atPath: (tmpDir as NSString).appendingPathComponent(name))
+                                    }
+                                }
+                                if let cachesURL = fm.urls(for: .cachesDirectory, in: .userDomainMask).first {
+                                    let candidates = ["com.apple.UIKit.shortcuts", "DocumentPicker", "FilePicker"]
+                                    for name in candidates {
+                                        let url = cachesURL.appendingPathComponent(name)
+                                        try? fm.removeItem(at: url)
+                                    }
+                                }
+                                DispatchQueue.main.async {
+                                    let presentationData = context.sharedContext.currentPresentationData.with { $0 }
+                                    presentControllerImpl?(OverlayStatusController(theme: presentationData.theme, type: .success), nil)
+                                }
+                            }
+                        }),
+                        TextAlertAction(type: .genericAction, title: presentationData.strings.Common_Cancel, action: {})
+                    ]
+                )
+                presentControllerImpl?(alertController, nil)
+            }
+            // MARK: - End MQGram
 
             if actionString == "markAllReadServer" {
                 let presentationData = context.sharedContext.currentPresentationData.with { $0 }
