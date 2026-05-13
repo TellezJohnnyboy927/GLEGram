@@ -4404,9 +4404,9 @@ func replayFinalState(
                     }
                 }
             case let .DeleteMessagesWithGlobalIds(allIds):
-                // MARK: - MQGram - Save snapshots before deleting (AyuGram-style)
+                // MARK: - MQGram - Keep anti-delete messages in their original chat position.
                 #if canImport(SGDeletedMessages)
-                SGDeletedMessages.saveSnapshotsForGlobalIds(allIds, transaction: transaction, shouldSave: { id, _ in
+                let shouldSaveDeletedMessage: (MessageId, Message) -> Bool = { id, _ in
                     #if canImport(SGSimpleSettings)
                     if id.peerId.namespace == Namespaces.Peer.CloudUser,
                        let peer = transaction.getPeer(id.peerId) as? TelegramUser,
@@ -4416,18 +4416,26 @@ func replayFinalState(
                     }
                     #endif
                     return true
-                }, transformAttributes: { _, attributes in
+                }
+                let transformDeletedAttributes: (Message, inout [MessageAttribute]) -> Void = { _, attributes in
                     #if canImport(SGSimpleSettings)
                     if !SGSimpleSettings.shared.saveDeletedMessagesReactions {
                         attributes.removeAll(where: { $0 is ReactionsMessageAttribute })
                     }
                     #endif
-                }, transformMedia: { message, _ in
+                }
+                let markedGlobalIds = SGDeletedMessages.markMessagesAsDeletedInPlaceForGlobalIds(
+                    allIds,
+                    transaction: transaction,
+                    shouldSave: shouldSaveDeletedMessage,
+                    transformAttributes: transformDeletedAttributes
+                )
+                let ids = allIds.filter { !markedGlobalIds.contains($0) }
+                SGDeletedMessages.saveSnapshotsForGlobalIds(ids, transaction: transaction, shouldSave: shouldSaveDeletedMessage, transformAttributes: transformDeletedAttributes, transformMedia: { message, _ in
                     return sgTransformMediaForSavedDeletedSnapshot(message: message, mediaBox: mediaBox)
                 })
-                let ids = allIds
                 #if canImport(SGLogging)
-                SGLogger.shared.log("SGDeletedMessages", "DeleteMessagesWithGlobalIds: allIds=\(allIds) → saving snapshots (if possible), deleting originals")
+                SGLogger.shared.log("SGDeletedMessages", "DeleteMessagesWithGlobalIds: allIds=\(allIds), markedInPlace=\(markedGlobalIds.count), deleting originals=\(ids.count)")
                 #endif
                 #else
                 let ids = allIds

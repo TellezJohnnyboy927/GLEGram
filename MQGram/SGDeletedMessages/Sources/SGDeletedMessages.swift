@@ -11,6 +11,8 @@ import SGLogging
 private let messageNamespaceCloud: Int32 = 0
 // Namespaces.Message.SavedDeleted = 1338
 private let messageNamespaceSavedDeleted: Int32 = 1338
+// Namespaces.Peer.SecretChat = 3
+private let peerNamespaceSecretChat: Int32 = 3
 
 public struct SGDeletedMessages {
     public static var showDeletedMessages: Bool {
@@ -24,6 +26,123 @@ public struct SGDeletedMessages {
     
     private static func savedDeletedId(for originalId: MessageId) -> MessageId {
         return MessageId(peerId: originalId.peerId, namespace: messageNamespaceSavedDeleted, id: originalId.id)
+    }
+
+    private static func markMessageAsDeletedInPlace(
+        id: MessageId,
+        message: Message,
+        transaction: Transaction,
+        transformAttributes: ((Message, inout [MessageAttribute]) -> Void)?
+    ) {
+        transaction.updateMessage(id) { currentMessage in
+            let storeForwardInfo = currentMessage.forwardInfo.flatMap(StoreMessageForwardInfo.init)
+            var attributes = currentMessage.attributes
+            var hasDeletedAttribute = false
+            for i in 0 ..< attributes.count {
+                if let attribute = attributes[i] as? SGDeletedMessageAttribute {
+                    attributes[i] = SGDeletedMessageAttribute(
+                        isDeleted: true,
+                        originalText: attribute.originalText ?? currentMessage.text,
+                        editHistory: attribute.editHistory,
+                        originalNamespace: attribute.originalNamespace ?? id.namespace,
+                        originalId: attribute.originalId ?? id.id
+                    )
+                    hasDeletedAttribute = true
+                    break
+                }
+            }
+            if !hasDeletedAttribute {
+                attributes.append(SGDeletedMessageAttribute(isDeleted: true, originalText: currentMessage.text, originalNamespace: id.namespace, originalId: id.id))
+            }
+
+            transformAttributes?(message, &attributes)
+
+            return .update(StoreMessage(
+                id: currentMessage.id,
+                customStableId: nil,
+                globallyUniqueId: currentMessage.globallyUniqueId,
+                groupingKey: currentMessage.groupingKey,
+                threadId: currentMessage.threadId,
+                timestamp: currentMessage.timestamp,
+                flags: StoreMessageFlags(currentMessage.flags),
+                tags: currentMessage.tags,
+                globalTags: currentMessage.globalTags,
+                localTags: currentMessage.localTags,
+                forwardInfo: storeForwardInfo,
+                authorId: currentMessage.author?.id,
+                text: currentMessage.text,
+                attributes: attributes,
+                media: currentMessage.media
+            ))
+        }
+    }
+
+    /// Mark existing cloud messages as deleted without moving them to the SavedDeleted namespace.
+    /// This keeps anti-delete messages at their original chat position.
+    public static func markMessagesAsDeletedInPlace(
+        ids: [MessageId],
+        transaction: Transaction,
+        shouldSave: ((MessageId, Message) -> Bool)? = nil,
+        transformAttributes: ((Message, inout [MessageAttribute]) -> Void)? = nil
+    ) -> Set<MessageId> {
+        guard showDeletedMessages, !ids.isEmpty else { return Set() }
+
+        var result = Set<MessageId>()
+        result.reserveCapacity(ids.count)
+
+        for id in ids {
+            if id.namespace == messageNamespaceSavedDeleted {
+                continue
+            }
+            if id.namespace != messageNamespaceCloud {
+                continue
+            }
+            // Secret chat deletion/read timers have protocol side effects; keep the old snapshot path there.
+            if id.peerId.namespace._internalGetInt32Value() == peerNamespaceSecretChat {
+                continue
+            }
+            guard let message = transaction.getMessage(id) else {
+                continue
+            }
+            if let shouldSave, !shouldSave(id, message) {
+                continue
+            }
+
+            markMessageAsDeletedInPlace(id: id, message: message, transaction: transaction, transformAttributes: transformAttributes)
+            result.insert(id)
+        }
+
+        return result
+    }
+
+    /// Same as `markMessagesAsDeletedInPlace`, but for delete updates that arrive with global ids.
+    public static func markMessagesAsDeletedInPlaceForGlobalIds(
+        _ globalIds: [Int32],
+        transaction: Transaction,
+        shouldSave: ((MessageId, Message) -> Bool)? = nil,
+        transformAttributes: ((Message, inout [MessageAttribute]) -> Void)? = nil
+    ) -> Set<Int32> {
+        guard showDeletedMessages, !globalIds.isEmpty else { return Set() }
+
+        var result = Set<Int32>()
+        result.reserveCapacity(globalIds.count)
+
+        for globalId in globalIds {
+            guard let id = transaction.messageIdsForGlobalIds([globalId]).first else {
+                continue
+            }
+            let marked = markMessagesAsDeletedInPlace(
+                ids: [id],
+                transaction: transaction,
+                shouldSave: shouldSave,
+                transformAttributes: transformAttributes
+            )
+            if marked.contains(id) {
+                result.insert(globalId)
+            }
+        }
+
+        return result
     }
     
     /// AyuGram-style: create a local SavedDeleted snapshot (separate namespace) and return `true` if saved.

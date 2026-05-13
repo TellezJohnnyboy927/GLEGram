@@ -255,7 +255,10 @@ private func pushPeerReadState(network: Network, postbox: Postbox, stateManager:
                 case let .idBased(maxIncomingReadId, _, _, _, markedUnread):
                     // MARK: - MQGram - skip readHistory when user enabled "hide read receipts"
                     #if canImport(SGSimpleSettings)
-                    let mqShouldBlockReadCh = SGSimpleSettings.shared.disableMessageReadReceipt
+                    let mqShouldBlockReadCh = SGSimpleSettings.shared.shouldBlockMessageReadReceipt(
+                        peerIdNamespace: peerId.namespace._internalGetInt32Value(),
+                        peerIdId: peerId.id._internalGetInt64Value()
+                    )
                     #else
                     let mqShouldBlockReadCh = false
                     #endif
@@ -292,7 +295,10 @@ private func pushPeerReadState(network: Network, postbox: Postbox, stateManager:
                 case let .idBased(maxIncomingReadId, _, _, _, markedUnread):
                     // MARK: - MQGram - skip readHistory when user enabled "hide read receipts"
                     #if canImport(SGSimpleSettings)
-                    let mqShouldBlockReadMs = SGSimpleSettings.shared.disableMessageReadReceipt
+                    let mqShouldBlockReadMs = SGSimpleSettings.shared.shouldBlockMessageReadReceipt(
+                        peerIdNamespace: peerId.namespace._internalGetInt32Value(),
+                        peerIdId: peerId.id._internalGetInt64Value()
+                    )
                     #else
                     let mqShouldBlockReadMs = false
                     #endif

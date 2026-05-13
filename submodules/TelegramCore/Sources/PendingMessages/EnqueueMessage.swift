@@ -3,10 +3,24 @@ import Postbox
 import TelegramApi
 import SwiftSignalKit
 import Emoji
+#if canImport(SGSimpleSettings)
+import SGSimpleSettings
+#endif
 
 public enum EnqueueMessageGrouping {
     case none
     case auto
+}
+
+private func mqShouldBlockMessageReadReceipt(peerId: PeerId) -> Bool {
+    #if canImport(SGSimpleSettings)
+    return SGSimpleSettings.shared.shouldBlockMessageReadReceipt(
+        peerIdNamespace: peerId.namespace._internalGetInt32Value(),
+        peerIdId: peerId.id._internalGetInt64Value()
+    )
+    #else
+    return false
+    #endif
 }
 
 public struct EngineMessageReplyQuote: Codable, Equatable {
@@ -476,7 +490,7 @@ func enqueueMessages(transaction: Transaction, account: Account, peerId: PeerId,
      * If it is a support account, mark messages as read here as they are
      * not marked as read when chat is opened.
      **/
-    if account.isSupportUser {
+    if account.isSupportUser && !mqShouldBlockMessageReadReceipt(peerId: peerId) {
         let namespace: MessageId.Namespace
         if peerId.namespace == Namespaces.Peer.SecretChat {
             namespace = Namespaces.Message.SecretIncoming

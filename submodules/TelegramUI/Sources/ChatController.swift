@@ -8510,8 +8510,11 @@ public final class ChatControllerImpl: TelegramBaseController, ChatController, G
         }
         
         // MARK: - MQGram — Mark peer as sent for readAfterAction, then flush pending read index
-        if SGSimpleSettings.shared.readAfterAction {
-            SGSimpleSettings.shared.markPeerAsSentForReadAfterAction(peerIdNamespace: peerId.namespace._internalGetInt32Value(), peerIdId: peerId.id._internalGetInt64Value())
+        let mqPeerNamespace = peerId.namespace._internalGetInt32Value()
+        let mqPeerId = peerId.id._internalGetInt64Value()
+        if SGSimpleSettings.shared.readAfterAction &&
+            !SGSimpleSettings.shared.shouldBlockMessageReadReceipt(peerIdNamespace: mqPeerNamespace, peerIdId: mqPeerId) {
+            SGSimpleSettings.shared.markPeerAsSentForReadAfterAction(peerIdNamespace: mqPeerNamespace, peerIdId: mqPeerId)
         }
         // MARK: - End MQGram
         

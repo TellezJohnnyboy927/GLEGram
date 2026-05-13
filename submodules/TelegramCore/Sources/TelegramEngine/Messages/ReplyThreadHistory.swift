@@ -2,6 +2,20 @@ import Foundation
 import Postbox
 import SwiftSignalKit
 import TelegramApi
+#if canImport(SGSimpleSettings)
+import SGSimpleSettings
+#endif
+
+private func mqShouldBlockMessageReadReceipt(peerId: PeerId) -> Bool {
+    #if canImport(SGSimpleSettings)
+    return SGSimpleSettings.shared.shouldBlockMessageReadReceipt(
+        peerIdNamespace: peerId.namespace._internalGetInt32Value(),
+        peerIdId: peerId.id._internalGetInt64Value()
+    )
+    #else
+    return false
+    #endif
+}
 
 private struct DiscussionMessage {
     var messageId: MessageId
@@ -319,6 +333,9 @@ private class ReplyThreadHistoryContextImpl {
         let threadId = self.threadId
         
         if messageIndex.id.namespace != Namespaces.Message.Cloud {
+            return
+        }
+        if mqShouldBlockMessageReadReceipt(peerId: peerId) {
             return
         }
 

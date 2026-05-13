@@ -5494,7 +5494,7 @@ public class ChatMessageBubbleItemNode: ChatMessageItemView, ChatMessagePreviewI
                     indicatorNode = ASImageNode()
                     indicatorNode.displaysAsynchronously = false
                     indicatorNode.displayWithoutProcessing = true
-                    let iconSize = CGSize(width: 18.0, height: 18.0)
+                    let iconSize = CGSize(width: 13.0, height: 13.0)
                     indicatorNode.image = generateImage(iconSize, contextGenerator: { size, context in
                         context.clear(CGRect(origin: .zero, size: size))
                         // MARK: - MQGram - flip Y so the trash icon (designed in UIKit coords) renders right-side up
@@ -5520,7 +5520,7 @@ public class ChatMessageBubbleItemNode: ChatMessageItemView, ChatMessagePreviewI
                     strongSelf.addSubnode(indicatorNode)
                     strongSelf.deletedIndicatorNode = indicatorNode
                 }
-                let indicatorSize = CGSize(width: 18.0, height: 18.0)
+                let indicatorSize = CGSize(width: 13.0, height: 13.0)
                 // Clamp x to keep the indicator on-screen for incoming bubbles that hug the left edge.
                 let preferredX = backgroundFrame.minX - indicatorSize.width - 2.0
                 let clampedX = max(2.0, preferredX)

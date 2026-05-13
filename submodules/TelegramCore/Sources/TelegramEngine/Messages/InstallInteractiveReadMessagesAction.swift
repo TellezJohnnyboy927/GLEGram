@@ -2,26 +2,44 @@ import Foundation
 import Postbox
 import TelegramApi
 import SwiftSignalKit
+#if canImport(SGSimpleSettings)
+import SGSimpleSettings
+#endif
+
+private func mqShouldBlockMessageReadReceipt(peerId: PeerId) -> Bool {
+    #if canImport(SGSimpleSettings)
+    return SGSimpleSettings.shared.shouldBlockMessageReadReceipt(
+        peerIdNamespace: peerId.namespace._internalGetInt32Value(),
+        peerIdId: peerId.id._internalGetInt64Value()
+    )
+    #else
+    return false
+    #endif
+}
 
 func _internal_installInteractiveReadMessagesAction(postbox: Postbox, stateManager: AccountStateManager, peerId: PeerId, threadId: Int64?) -> Disposable {
     return postbox.installStoreMessageAction(peerId: peerId, { messages, transaction in
+        if mqShouldBlockMessageReadReceipt(peerId: peerId) {
+            return
+        }
+
         var consumeMessageIds: [MessageId] = []
         var readReactionIds: [MessageId] = []
         readReactionIds.removeAll()
-        
+
         var readMessageIndexByNamespace: [MessageId.Namespace: MessageIndex] = [:]
-        
+
         for message in messages {
             if case let .Id(id) = message.id {
                 if threadId == nil || message.threadId == threadId {
                 } else {
                     continue
                 }
-                
+
                 var hasUnconsumedMention = false
                 var hasUnconsumedContent = false
                 var hasUnseenReactions = false
-                
+
                 if message.tags.contains(.unseenPersonalMessage) || message.tags.contains(.unseenReaction) {
                     inner: for attribute in message.attributes {
                         if let attribute = attribute as? ConsumablePersonalMentionMessageAttribute, !attribute.consumed, !attribute.pending {
@@ -33,14 +51,14 @@ func _internal_installInteractiveReadMessagesAction(postbox: Postbox, stateManag
                         }
                     }
                 }
-                
+
                 if hasUnconsumedMention && !hasUnconsumedContent {
                     consumeMessageIds.append(id)
                 }
                 if hasUnseenReactions {
                     //readReactionIds.append(id)
                 }
-                
+
                 if !message.flags.intersection(.IsIncomingMask).isEmpty {
                     let index = MessageIndex(id: id, timestamp: message.timestamp)
                     let current = readMessageIndexByNamespace[id.namespace]
@@ -50,7 +68,7 @@ func _internal_installInteractiveReadMessagesAction(postbox: Postbox, stateManag
                 }
             }
         }
-        
+
         for id in Set(consumeMessageIds + readReactionIds) {
             transaction.updateMessage(id, update: { currentMessage in
                 var attributes = currentMessage.attributes
@@ -74,7 +92,7 @@ func _internal_installInteractiveReadMessagesAction(postbox: Postbox, stateManag
                 }
                 return .update(StoreMessage(id: currentMessage.id, customStableId: nil, globallyUniqueId: currentMessage.globallyUniqueId, groupingKey: currentMessage.groupingKey, threadId: currentMessage.threadId, timestamp: currentMessage.timestamp, flags: StoreMessageFlags(currentMessage.flags), tags: tags, globalTags: currentMessage.globalTags, localTags: currentMessage.localTags, forwardInfo: currentMessage.forwardInfo.flatMap(StoreMessageForwardInfo.init), authorId: currentMessage.author?.id, text: currentMessage.text, attributes: attributes, media: currentMessage.media))
             })
-            
+
             if consumeMessageIds.contains(id) {
                 transaction.setPendingMessageAction(type: .consumeUnseenPersonalMessage, id: id, action: ConsumePersonalMessageAction())
             }
@@ -82,7 +100,7 @@ func _internal_installInteractiveReadMessagesAction(postbox: Postbox, stateManag
                 transaction.setPendingMessageAction(type: .readReaction, id: id, action: ReadReactionAction())
             }
         }
-        
+
         for (_, index) in readMessageIndexByNamespace {
             if let threadId {
                 if var data = transaction.getMessageHistoryThreadInfo(peerId: peerId, threadId: threadId)?.data.get(MessageHistoryThreadData.self) {
@@ -91,7 +109,7 @@ func _internal_installInteractiveReadMessagesAction(postbox: Postbox, stateManag
                             data.incomingUnreadCount = max(0, data.incomingUnreadCount - Int32(count))
                             data.maxIncomingReadId = index.id.id
                         }
-                        
+
                         if let topMessageIndex = transaction.getMessageHistoryThreadTopMessage(peerId: peerId, threadId: threadId, namespaces: Set([Namespaces.Message.Cloud])) {
                             if index.id.id >= topMessageIndex.id.id {
                                 let containingHole = transaction.getThreadIndexHole(peerId: peerId, threadId: threadId, namespace: topMessageIndex.id.namespace, containing: topMessageIndex.id.id)
@@ -101,9 +119,9 @@ func _internal_installInteractiveReadMessagesAction(postbox: Postbox, stateManag
                                 }
                             }
                         }
-                        
+
                         data.maxKnownMessageId = max(data.maxKnownMessageId, index.id.id)
-                        
+
                         if let entry = StoredMessageHistoryThreadInfo(data) {
                             transaction.setMessageHistoryThreadInfo(peerId: peerId, threadId: threadId, info: entry)
                         }
@@ -119,12 +137,12 @@ func _internal_installInteractiveReadMessagesAction(postbox: Postbox, stateManag
 public struct VisibleMessageRange {
     public var lowerBound: MessageIndex
     public var upperBound: MessageIndex?
-    
+
     public init(lowerBound: MessageIndex, upperBound: MessageIndex?) {
         self.lowerBound = lowerBound
         self.upperBound = upperBound
     }
-    
+
     fileprivate func contains(index: MessageIndex) -> Bool {
         if index < lowerBound {
             return false
@@ -141,19 +159,19 @@ public struct VisibleMessageRange {
 private final class StoreOrUpdateMessageActionImpl: StoreOrUpdateMessageAction {
     private let getVisibleRange: () -> VisibleMessageRange?
     private let didReadReactionsInMessages: ([MessageId: [ReactionsMessageAttribute.RecentPeer]]) -> Void
-    
+
     init(getVisibleRange: @escaping () -> VisibleMessageRange?, didReadReactionsInMessages: @escaping ([MessageId: [ReactionsMessageAttribute.RecentPeer]]) -> Void) {
         self.getVisibleRange = getVisibleRange
         self.didReadReactionsInMessages = didReadReactionsInMessages
     }
-    
+
     func addOrUpdate(messages: [StoreMessage], transaction: Transaction) {
         var readReactionIds: [MessageId: [ReactionsMessageAttribute.RecentPeer]] = [:]
-        
+
         guard let visibleRange = self.getVisibleRange() else {
             return
         }
-        
+
         for message in messages {
             guard let index = message.index else {
                 continue
@@ -161,7 +179,7 @@ private final class StoreOrUpdateMessageActionImpl: StoreOrUpdateMessageAction {
             if !visibleRange.contains(index: index) {
                 continue
             }
-            
+
             if message.tags.contains(.unseenReaction) {
                 inner: for attribute in message.attributes {
                     if let attribute = attribute as? ReactionsMessageAttribute, attribute.hasUnseen {
@@ -171,7 +189,7 @@ private final class StoreOrUpdateMessageActionImpl: StoreOrUpdateMessageAction {
                 }
             }
         }
-        
+
         for id in readReactionIds.keys {
             transaction.updateMessage(id, update: { currentMessage in
                 var attributes = currentMessage.attributes
@@ -187,7 +205,7 @@ private final class StoreOrUpdateMessageActionImpl: StoreOrUpdateMessageAction {
             })
             transaction.setPendingMessageAction(type: .readReaction, id: id, action: ReadReactionAction())
         }
-        
+
         self.didReadReactionsInMessages(readReactionIds)
     }
 }

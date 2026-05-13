@@ -165,19 +165,19 @@ private func mqGramRootEntries(presentationData: PresentationData, accounts: [Ac
     let appearanceTitle = lang == "ru" ? "Оформление" : "Appearance"
     let securityTitle = lang == "ru" ? "Приватность" : "Privacy"
     let otherTitle = lang == "ru" ? "Другие функции" : "Other"
+    let mqGramTitle = lang == "ru" ? "MQGram канал" : "MQGram channel"
     let vpnTitle = lang == "ru" ? "VPN-канал" : "VPN channel"
-    let ownerTitle = lang == "ru" ? "Владелец" : "Owner"
+    let ownerTitle = lang == "ru" ? "Разработчик" : "Developer"
     let lifeTitle = lang == "ru" ? "Life-канал / чат" : "Life channel / chat"
-    let mqGramTitle = "MQGram"
     entries.append(.header(id: id.count, section: .functions, text: functionsHeader, badge: nil))
     entries.append(MQGramEntry.disclosureWithIcon(id: id.count, section: .functions, link: .appearanceTab, text: appearanceTitle, iconRef: "MQGramTabAppearance"))
     entries.append(MQGramEntry.disclosureWithIcon(id: id.count, section: .functions, link: .securityTab, text: securityTitle, iconRef: "MQGramTabSecurity"))
     entries.append(MQGramEntry.disclosureWithIcon(id: id.count, section: .functions, link: .otherTab, text: otherTitle, iconRef: "MQGramTabOther"))
     entries.append(.header(id: id.count, section: .links, text: linksHeader, badge: nil))
-    entries.append(MQGramEntry.disclosureWithIcon(id: id.count, section: .links, link: .channelLink, text: vpnTitle, iconRef: "Settings/Menu/Channels"))
+    entries.append(MQGramEntry.disclosureWithIcon(id: id.count, section: .links, link: .channelLink, text: mqGramTitle, iconRef: "Settings/Menu/Channels"))
+    entries.append(MQGramEntry.disclosureWithIcon(id: id.count, section: .links, link: .forumLink, text: vpnTitle, iconRef: "Settings/Menu/Topics"))
     entries.append(MQGramEntry.disclosureWithIcon(id: id.count, section: .links, link: .ownerLink, text: ownerTitle, iconRef: "Settings/Menu/Profile"))
     entries.append(MQGramEntry.disclosureWithIcon(id: id.count, section: .links, link: .chatLink, text: lifeTitle, iconRef: "Settings/Menu/GroupChats"))
-    entries.append(MQGramEntry.disclosureWithIcon(id: id.count, section: .links, link: .forumLink, text: mqGramTitle, iconRef: "Settings/Menu/Topics"))
 
     return entries
 }
@@ -527,15 +527,7 @@ private func mqGramEntries(presentationData: PresentationData, contentSettingsCo
     entries.append(.disclosure(id: id.count, section: .other, link: .feelRichAmount, text: (lang == "ru" ? "Изменить сумму" : "Change amount") + " (\(SGSimpleSettings.shared.feelRichStarsAmount))"))
 
     // MARK: - MQGram — Voice Morpher
-    let voiceMorpherTitle = (lang == "ru" ? "Изменение голоса" : "Voice Morpher")
-    entries.append(.disclosure(id: id.count, section: .other, link: .voiceMorpher, text: voiceMorpherTitle))
-
-    // MARK: - MQGram — Plugins
-    let pluginsTitle = (lang == "ru" ? "Плагины" : "Plugins")
-    entries.append(.toggle(id: id.count, section: .other, settingName: .pluginSystemEnabled, value: SGSimpleSettings.shared.pluginSystemEnabled, text: pluginsTitle, enabled: true))
-    if SGSimpleSettings.shared.pluginSystemEnabled {
-        entries.append(.disclosure(id: id.count, section: .other, link: .pluginList, text: (lang == "ru" ? "Управление плагинами" : "Manage Plugins")))
-    }
+    // Voice Morpher and plugin execution are hidden until their runtimes are fully wired.
 
     // MARK: Per-account notification mute
     if accounts.count > 1 {
@@ -557,8 +549,8 @@ private func mqGramEntries(presentationData: PresentationData, contentSettingsCo
     entries.append(.header(id: id.count, section: .fakeLocation, text: (lang == "ru" ? "ФЕЙКОВАЯ ГЕОЛОКАЦИЯ" : "FAKE LOCATION"), badge: nil))
     let fakeLocationTitle = (lang == "ru" ? "Включить фейковую геолокацию" : "Enable Fake Location")
     let fakeLocationNotice = (lang == "ru"
-                              ? "Подменяет ваше реальное местоположение на выбранное. Работает во всех приложениях, использующих геолокацию."
-                              : "Replaces your real location with the selected one. Works in all apps that use location services.")
+                              ? "Подменяет геолокацию внутри MQGram на выбранную точку."
+                              : "Replaces location inside MQGram with the selected point.")
     entries.append(.toggle(id: id.count, section: .fakeLocation, settingName: .fakeLocationEnabled, value: SGSimpleSettings.shared.fakeLocationEnabled, text: fakeLocationTitle, enabled: true))
     entries.append(.notice(id: id.count, section: .fakeLocation, text: fakeLocationNotice))
     
@@ -586,6 +578,7 @@ public func mqGramSettingsController(context: AccountContext) -> ViewController 
 
     var presentControllerImpl: ((ViewController, ViewControllerPresentationArguments?) -> Void)?
     var pushControllerImpl: ((ViewController) -> Void)?
+    var getNavigationControllerImpl: (() -> NavigationController?)?
     #if canImport(FaceScanScreen)
     var presentAgeVerificationImpl: ((@escaping () -> Void) -> Void)?
     #endif
@@ -812,28 +805,28 @@ public func mqGramSettingsController(context: AccountContext) -> ViewController 
         openDisclosureLink: { link in
             if link == .channelLink {
                 let pd = context.sharedContext.currentPresentationData.with { $0 }
-                context.sharedContext.openExternalUrl(context: context, urlContext: .generic, url: "https://t.me/stivenvpn", forceExternal: true, presentationData: pd, navigationController: nil, dismissInput: {})
+                context.sharedContext.openExternalUrl(context: context, urlContext: .generic, url: "https://t.me/MQGram", forceExternal: false, presentationData: pd, navigationController: getNavigationControllerImpl?(), dismissInput: {})
                 return
             }
             if link == .ownerLink {
                 let pd = context.sharedContext.currentPresentationData.with { $0 }
-                context.sharedContext.openExternalUrl(context: context, urlContext: .generic, url: "https://t.me/jutsodev", forceExternal: true, presentationData: pd, navigationController: nil, dismissInput: {})
+                context.sharedContext.openExternalUrl(context: context, urlContext: .generic, url: "https://t.me/jutsodev", forceExternal: false, presentationData: pd, navigationController: getNavigationControllerImpl?(), dismissInput: {})
                 return
             }
             if link == .chatLink {
                 let pd = context.sharedContext.currentPresentationData.with { $0 }
-                context.sharedContext.openExternalUrl(context: context, urlContext: .generic, url: "https://t.me/jutsolife", forceExternal: true, presentationData: pd, navigationController: nil, dismissInput: {})
+                context.sharedContext.openExternalUrl(context: context, urlContext: .generic, url: "https://t.me/jutsolife", forceExternal: false, presentationData: pd, navigationController: getNavigationControllerImpl?(), dismissInput: {})
                 return
             }
             if link == .forumLink {
                 let pd = context.sharedContext.currentPresentationData.with { $0 }
-                context.sharedContext.openExternalUrl(context: context, urlContext: .generic, url: "https://t.me/MQGram", forceExternal: true, presentationData: pd, navigationController: nil, dismissInput: {})
+                context.sharedContext.openExternalUrl(context: context, urlContext: .generic, url: "https://t.me/stivenvpn", forceExternal: false, presentationData: pd, navigationController: getNavigationControllerImpl?(), dismissInput: {})
                 return
             }
             if link == .betaChannel {
                 if let betaConfig = cachedAggregateBetaConfig(), let url = betaConfig.channelUrl, isUrlSafeForExternalOpen(url) {
                     let pd = context.sharedContext.currentPresentationData.with { $0 }
-                    context.sharedContext.openExternalUrl(context: context, urlContext: .generic, url: url, forceExternal: false, presentationData: pd, navigationController: nil, dismissInput: {})
+                    context.sharedContext.openExternalUrl(context: context, urlContext: .generic, url: url, forceExternal: false, presentationData: pd, navigationController: getNavigationControllerImpl?(), dismissInput: {})
                 }
                 return
             }
@@ -1301,6 +1294,11 @@ public func mqGramSettingsController(context: AccountContext) -> ViewController 
                 entries: entries,
                 style: .blocks,
                 ensureVisibleItemTag: nil,
+                headerItem: MQGramHeaderItem(
+                    theme: presentationData.theme,
+                    title: "MQGram",
+                    subtitle: presentationData.strings.baseLanguageCode == "ru" ? "Приватный клиент с рабочими функциями" : "Privacy client with working features"
+                ),
                 footerItem: nil,
                 initialScrollToItem: nil
             )
@@ -1341,6 +1339,9 @@ public func mqGramSettingsController(context: AccountContext) -> ViewController 
     
     let controller = ItemListController(context: context, state: signal)
     controller.navigationItem.leftBarButtonItem = makeBackBarButtonItem(presentationData: context.sharedContext.currentPresentationData.with({ $0 }), controller: controller)
+    getNavigationControllerImpl = { [weak controller] in
+        return controller?.navigationController as? NavigationController
+    }
     pushControllerImpl = { [weak controller] vc in controller?.push(vc) }
     presentControllerImpl = { [weak controller] c, a in
         guard let controller = controller else { return }

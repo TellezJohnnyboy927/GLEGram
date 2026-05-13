@@ -628,8 +628,10 @@ public final class AccountContextImpl: AccountContext {
         if case .peer(let peerId) = location {
             let ns = peerId.namespace._internalGetInt32Value()
             let id = peerId.id._internalGetInt64Value()
-            let excluded = SGSimpleSettings.shared.isPeerExcludedFromPrivacy(peerIdNamespace: ns, peerIdId: id)
-            if !excluded && SGSimpleSettings.shared.shouldBlockReadForReadAfterAction(peerIdNamespace: ns, peerIdId: id) {
+            let settings = SGSimpleSettings.shared
+            let excluded = settings.isPeerExcludedFromPrivacy(peerIdNamespace: ns, peerIdId: id)
+            if settings.shouldBlockMessageReadReceipt(peerIdNamespace: ns, peerIdId: id) ||
+                (!excluded && settings.shouldBlockReadForReadAfterAction(peerIdNamespace: ns, peerIdId: id)) {
                 return
             }
         }

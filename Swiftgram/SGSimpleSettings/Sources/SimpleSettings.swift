@@ -1023,6 +1023,14 @@ public class SGSimpleSettings {
         let key = "\(peerIdNamespace):\(peerIdId)"
         return !list.contains(key)
     }
+
+    public func shouldBlockMessageReadReceipt(peerIdNamespace: Int32, peerIdId: Int64) -> Bool {
+        guard disableMessageReadReceipt else { return false }
+        if isPeerExcludedFromPrivacy(peerIdNamespace: peerIdNamespace, peerIdId: peerIdId) {
+            return false
+        }
+        return shouldBlockReadReceiptFor(peerIdNamespace: peerIdNamespace, peerIdId: peerIdId)
+    }
     
     // MARK: - MQGram — Privacy exclusions list
     private static let privacyExclusionPeersKey = "sg_privacyExclusionPeerIds"
