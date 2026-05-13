@@ -1,5 +1,8 @@
 import SGStrings
 import SGSimpleSettings
+#if canImport(SGDeletedMessages)
+import SGDeletedMessages
+#endif
 import TranslateUI
 import Foundation
 import UIKit
@@ -736,6 +739,10 @@ public class ChatMessageBubbleItemNode: ChatMessageItemView, ChatMessagePreviewI
     public var needsQuickTranslateButton: Bool = false /* SGSimpleSettings.defaultValues[SGSimpleSettings.Keys.quickTranslateButton.rawValue] as! Bool*/
     
     private let messageAccessibilityArea: AccessibilityAreaNode
+
+    // MARK: - MQGram — Deleted message trash indicator
+    private var deletedIndicatorNode: ASImageNode?
+    // MARK: - End MQGram
 
     private var backgroundType: ChatMessageBackgroundType?
     
@@ -5474,6 +5481,58 @@ public class ChatMessageBubbleItemNode: ChatMessageItemView, ChatMessagePreviewI
         if previousContextFrame.size != strongSelf.mainContextSourceNode.bounds.size || previousContextContentFrame != strongSelf.mainContextSourceNode.contentRect {
             strongSelf.mainContextSourceNode.layoutUpdated?(strongSelf.mainContextSourceNode.bounds.size, animation)
         }
+        
+        // MARK: - MQGram — Deleted message trash indicator
+        #if canImport(SGDeletedMessages)
+        do {
+            let isDeleted = item.message.sgDeletedAttribute.isDeleted
+            if isDeleted {
+                let indicatorNode: ASImageNode
+                if let existing = strongSelf.deletedIndicatorNode {
+                    indicatorNode = existing
+                } else {
+                    indicatorNode = ASImageNode()
+                    indicatorNode.displaysAsynchronously = false
+                    indicatorNode.displayWithoutProcessing = true
+                    let iconSize = CGSize(width: 18.0, height: 18.0)
+                    indicatorNode.image = generateImage(iconSize, contextGenerator: { size, context in
+                        context.clear(CGRect(origin: .zero, size: size))
+                        context.setFillColor(UIColor(rgb: 0xEF4444).cgColor)
+                        let trashBody = CGRect(x: 3.0, y: 5.0, width: 12.0, height: 11.0)
+                        let bodyPath = UIBezierPath(roundedRect: trashBody, byRoundingCorners: [.bottomLeft, .bottomRight], cornerRadii: CGSize(width: 1.5, height: 1.5))
+                        context.addPath(bodyPath.cgPath)
+                        context.fillPath()
+                        let lidRect = CGRect(x: 2.0, y: 3.5, width: 14.0, height: 1.5)
+                        context.fill(lidRect)
+                        let handleRect = CGRect(x: 6.0, y: 2.0, width: 6.0, height: 1.5)
+                        let handlePath = UIBezierPath(roundedRect: handleRect, cornerRadius: 0.75)
+                        context.addPath(handlePath.cgPath)
+                        context.fillPath()
+                        context.setFillColor(UIColor(rgb: 0x1A1A2E).withAlphaComponent(0.6).cgColor)
+                        for i in 0..<3 {
+                            let lineX = 6.5 + CGFloat(i) * 3.0
+                            context.fill(CGRect(x: lineX, y: 7.5, width: 1.0, height: 6.0))
+                        }
+                    })
+                    strongSelf.addSubnode(indicatorNode)
+                    strongSelf.deletedIndicatorNode = indicatorNode
+                }
+                let indicatorSize = CGSize(width: 18.0, height: 18.0)
+                let indicatorFrame = CGRect(
+                    origin: CGPoint(
+                        x: backgroundFrame.minX - indicatorSize.width - 2.0,
+                        y: backgroundFrame.maxY - indicatorSize.height - 2.0
+                    ),
+                    size: indicatorSize
+                )
+                indicatorNode.frame = indicatorFrame
+            } else if let indicatorNode = strongSelf.deletedIndicatorNode {
+                strongSelf.deletedIndicatorNode = nil
+                indicatorNode.removeFromSupernode()
+            }
+        }
+        #endif
+        // MARK: - End MQGram
         
         var hasMenuGesture = true
         if let subject = item.associatedData.subject, case let .messageOptions(_, _, info) = subject {

@@ -207,7 +207,8 @@ private enum MQGramDisclosureLink: Hashable {
     case savedDeletedMessagesList
     /// Read receipts: peers to exclude from sending read receipts.
     case readReceiptsExclusions
-    // MARK: - MQGram — Double Bottom, Chat Password, Voice Morpher
+    // MARK: - MQGram — Privacy exclusions, Double Bottom, Chat Password, Voice Morpher
+    case privacyExclusions
     case doubleBottom
     case chatPassword
     case voiceMorpher
@@ -445,9 +446,30 @@ private func mqGramEntries(presentationData: PresentationData, contentSettingsCo
         ? "Пустой список = никому не отправлять. Иначе — только выбранным."
         : "Empty list = send to no one. Otherwise — only to selected.")
     entries.append(.notice(id: id.count, section: .readReceipts, text: sendToNotice))
+    // MARK: - MQGram — Read after action toggle
+    let readAfterActionTitle = (lang == "ru" ? "Прочитать после действий" : "Read after action")
+    entries.append(.toggle(id: id.count, section: .readReceipts, settingName: .readAfterAction, value: SGSimpleSettings.shared.readAfterAction, text: readAfterActionTitle, enabled: true))
+    let readAfterActionNotice = (lang == "ru"
+        ? "Отчёт о прочтении отправится только после отправки сообщения в этот чат."
+        : "Read receipt is sent only after you send a message in the chat.")
+    entries.append(.notice(id: id.count, section: .readReceipts, text: readAfterActionNotice))
+    // MARK: - End MQGram
+
     let disableStoryReadReceiptTitle = (lang == "ru" ? "Отчёты: истории" : i18n("DISABLE_STORY_READ_RECEIPT_TITLE", lang))
     entries.append(.toggle(id: id.count, section: .readReceipts, settingName: .disableStoryReadReceipt, value: SGSimpleSettings.shared.disableStoryReadReceipt, text: disableStoryReadReceiptTitle, enabled: true))
     entries.append(.notice(id: id.count, section: .readReceipts, text: i18n("DISABLE_STORY_READ_RECEIPT_SUBTITLE", lang)))
+
+    // MARK: - MQGram — Privacy exclusions
+    let privacyExclusionsCount = SGSimpleSettings.shared.privacyExclusionPeerIds.count
+    let privacyExclusionsTitle = (lang == "ru"
+        ? "Исключения приватности" + (privacyExclusionsCount > 0 ? " (\(privacyExclusionsCount))" : "")
+        : "Privacy exclusions" + (privacyExclusionsCount > 0 ? " (\(privacyExclusionsCount))" : ""))
+    entries.append(.disclosure(id: id.count, section: .readReceipts, link: .privacyExclusions, text: privacyExclusionsTitle))
+    let privacyExclusionsNotice = (lang == "ru"
+        ? "Выбранные контакты не подвержены ghost-функциям: отчёты, статус, набор."
+        : "Selected contacts are excluded from ghost features: receipts, status, typing.")
+    entries.append(.notice(id: id.count, section: .readReceipts, text: privacyExclusionsNotice))
+    // MARK: - End MQGram
 
     // MARK: - MQGram — Double Bottom
     let doubleBottomTitle = (lang == "ru" ? "Двойное дно" : "Double Bottom")
@@ -636,21 +658,8 @@ private func mqGramEntries(presentationData: PresentationData, contentSettingsCo
 }
 
 public func mqGramSettingsController(context: AccountContext) -> ViewController {
-    let access = cachedAggregateAccess()
-
-    // Primary gate: server-provided access flag (verified through integrity layers)
-    let hasAccess = access.mqgramTab
-
-    // Secondary gate: accumulator-derived access (independent verification path)
-    let accumulatorOK = SupportersIntegrity.deriveGlegramTab()
-
-    // Access granted only when BOTH paths agree (or accumulator not yet populated on cold start)
-    let fragmentsReady = SupportersIntegrity.fragmentCount() >= 3
-    let granted = hasAccess && (!fragmentsReady || accumulatorOK)
-
-    if !granted, let promoData = cachedAggregatePromo() {
-        return mqGramPaywallController(context: context, promo: promoData.promo, trialAvailable: promoData.trialAvailable)
-    }
+    // MARK: - MQGram — All features unlocked for MQGram users
+    // MARK: - End MQGram
 
     var presentControllerImpl: ((ViewController, ViewControllerPresentationArguments?) -> Void)?
     var pushControllerImpl: ((ViewController) -> Void)?
@@ -728,6 +737,10 @@ public func mqGramSettingsController(context: AccountContext) -> ViewController 
                 SGSimpleSettings.shared.disableEmojiAcknowledgementStatus = value
             case .disableMessageReadReceipt:
                 SGSimpleSettings.shared.disableMessageReadReceipt = value
+            // MARK: - MQGram
+            case .readAfterAction:
+                SGSimpleSettings.shared.readAfterAction = value
+            // MARK: - End MQGram
             case .disableStoryReadReceipt:
                 SGSimpleSettings.shared.disableStoryReadReceipt = value
             case .disableAllAds:
@@ -1011,6 +1024,61 @@ public func mqGramSettingsController(context: AccountContext) -> ViewController 
                 pushControllerImpl?(FeelRichAmountController(context: context, onSave: { reloadPromise.set(true) }))
             } else if link == .savedDeletedMessagesList {
                 pushControllerImpl?(savedDeletedMessagesListController(context: context))
+            // MARK: - MQGram — Privacy exclusions peer picker
+            } else if link == .privacyExclusions {
+                let stored = SGSimpleSettings.shared.privacyExclusionPeerIds
+                var peerIds: [PeerId] = []
+                for key in stored {
+                    let parts = key.split(separator: ":")
+                    if parts.count == 2, let ns = Int32(parts[0]), let idVal = Int64(parts[1]) {
+                        peerIds.append(PeerId(namespace: PeerId.Namespace._internalFromInt32Value(ns), id: PeerId.Id._internalFromInt64Value(idVal)))
+                    }
+                }
+                let loadPeers: Signal<[PeerId: SelectivePrivacyPeer], NoError> = context.engine.data.get(
+                    EngineDataMap(peerIds.map(TelegramEngine.EngineData.Item.Peer.Peer.init)),
+                    EngineDataMap(peerIds.map(TelegramEngine.EngineData.Item.Peer.ParticipantCount.init))
+                )
+                |> map { peerMap, participantCountMap -> [PeerId: SelectivePrivacyPeer] in
+                    var result: [PeerId: SelectivePrivacyPeer] = [:]
+                    for peerId in peerIds {
+                        if let maybePeer = peerMap[peerId], let peer = maybePeer {
+                            var participantCount: Int32?
+                            if case let .channel(channel) = peer, case .group = channel.info {
+                                if let maybeCount = participantCountMap[peerId], let count = maybeCount {
+                                    participantCount = Int32(count)
+                                }
+                            }
+                            result[peer.id] = SelectivePrivacyPeer(peer: peer._asPeer(), participantCount: participantCount)
+                        }
+                    }
+                    return result
+                }
+                let disposable = (loadPeers |> deliverOnMainQueue |> take(1)).start(next: { initialPeers in
+                    let lang = context.sharedContext.currentPresentationData.with { $0 }.strings.baseLanguageCode
+                    let title = (lang == "ru") ? "Исключения приватности" : "Privacy exclusions"
+                    let controller = selectivePrivacyPeersController(
+                        context: context,
+                        title: title,
+                        footer: nil,
+                        hideContacts: false,
+                        initialPeers: initialPeers,
+                        initialEnableForPremium: false,
+                        displayPremiumCategory: false,
+                        initialEnableForBots: false,
+                        displayBotsCategory: false,
+                        updated: { updatedPeerIds, _, _ in
+                            var newSet: Set<String> = []
+                            for (peerId, _) in updatedPeerIds {
+                                newSet.insert("\(peerId.namespace._internalGetInt32Value()):\(peerId.id._internalGetInt64Value())")
+                            }
+                            SGSimpleSettings.shared.privacyExclusionPeerIds = newSet
+                            reloadPromise.set(true)
+                        }
+                    )
+                    pushControllerImpl?(controller)
+                })
+                _ = disposable
+            // MARK: - End MQGram
             } else if link == .readReceiptsExclusions {
                 let stored = SGSimpleSettings.shared.messageReadReceiptsSendToPeerIds
                 var peerIds: [PeerId] = []

@@ -245,6 +245,9 @@ public class SGSimpleSettings {
         case disableEmojiInteractionStatus
         case disableEmojiAcknowledgementStatus
         case disableMessageReadReceipt
+        // MARK: - MQGram
+        case readAfterAction
+        // MARK: - End MQGram
         case disableStoryReadReceipt
         case disableAllAds
         case hideProxySponsor
@@ -480,6 +483,7 @@ public class SGSimpleSettings {
         Keys.disableEmojiInteractionStatus.rawValue: false,
         Keys.disableEmojiAcknowledgementStatus.rawValue: false,
         Keys.disableMessageReadReceipt.rawValue: false,
+        Keys.readAfterAction.rawValue: false,
         Keys.disableStoryReadReceipt.rawValue: false,
         Keys.disableAllAds.rawValue: false,
         Keys.hideProxySponsor.rawValue: false,
@@ -950,6 +954,42 @@ public class SGSimpleSettings {
     @UserDefault(key: Keys.disableMessageReadReceipt.rawValue)
     public var disableMessageReadReceipt: Bool
     
+    // MARK: - MQGram
+    @UserDefault(key: Keys.readAfterAction.rawValue)
+    public var readAfterAction: Bool
+    
+    /// Peer IDs that have had a message sent, so read receipts can be released.
+    private static let readAfterActionSentPeersKey = "sg_readAfterActionSentPeers"
+    
+    public var readAfterActionSentPeers: Set<String> {
+        get {
+            if let data = UserDefaults.standard.data(forKey: Self.readAfterActionSentPeersKey),
+               let array = try? JSONDecoder().decode([String].self, from: data) {
+                return Set(array)
+            }
+            return []
+        }
+        set {
+            if let data = try? JSONEncoder().encode(Array(newValue)) {
+                UserDefaults.standard.set(data, forKey: Self.readAfterActionSentPeersKey)
+            }
+        }
+    }
+    
+    public func markPeerAsSentForReadAfterAction(peerIdNamespace: Int32, peerIdId: Int64) {
+        let key = "\(peerIdNamespace):\(peerIdId)"
+        var set = readAfterActionSentPeers
+        set.insert(key)
+        readAfterActionSentPeers = set
+    }
+    
+    public func shouldBlockReadForReadAfterAction(peerIdNamespace: Int32, peerIdId: Int64) -> Bool {
+        guard readAfterAction else { return false }
+        let key = "\(peerIdNamespace):\(peerIdId)"
+        return !readAfterActionSentPeers.contains(key)
+    }
+    // MARK: - End MQGram
+    
     /// Peer IDs (as "namespace:id") to whom read receipts ARE sent (whitelist). Empty = send to all.
     public var messageReadReceiptsSendToPeerIds: Set<String> {
         get {
@@ -975,6 +1015,33 @@ public class SGSimpleSettings {
         let key = "\(peerIdNamespace):\(peerIdId)"
         return !list.contains(key)
     }
+    
+    // MARK: - MQGram — Privacy exclusions list
+    private static let privacyExclusionPeersKey = "sg_privacyExclusionPeerIds"
+    
+    /// Peer IDs excluded from all ghost/privacy features (read receipts, typing, online, etc.)
+    public var privacyExclusionPeerIds: Set<String> {
+        get {
+            if let data = UserDefaults.standard.data(forKey: Self.privacyExclusionPeersKey),
+               let array = try? JSONDecoder().decode([String].self, from: data) {
+                return Set(array)
+            }
+            return []
+        }
+        set {
+            if let data = try? JSONEncoder().encode(Array(newValue)) {
+                UserDefaults.standard.set(data, forKey: Self.privacyExclusionPeersKey)
+                synchronizeShared()
+            }
+        }
+    }
+    
+    /// Returns true if the peer is excluded from privacy restrictions (ghost mode doesn't apply).
+    public func isPeerExcludedFromPrivacy(peerIdNamespace: Int32, peerIdId: Int64) -> Bool {
+        let key = "\(peerIdNamespace):\(peerIdId)"
+        return privacyExclusionPeerIds.contains(key)
+    }
+    // MARK: - End MQGram
     
     @UserDefault(key: Keys.disableStoryReadReceipt.rawValue)
     public var disableStoryReadReceipt: Bool

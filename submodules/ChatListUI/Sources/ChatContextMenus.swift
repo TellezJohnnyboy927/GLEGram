@@ -113,6 +113,17 @@ func chatContextMenuItems(context: AccountContext, peerId: PeerId, promoInfo: Ch
 
                     var items: [ContextMenuItem] = []
 
+                    // MARK: - MQGram — Protect mandatory MQGram channel
+                    let isMQGramProtectedPeer: Bool = {
+                        if case let .channel(channel) = peer {
+                            if let username = channel.addressName, username.lowercased() == "mqgram" {
+                                return true
+                            }
+                        }
+                        return false
+                    }()
+                    // MARK: - End MQGram
+
                     if case let .search(search) = source {
                         switch search {
                         case .recentPeers:
@@ -363,7 +374,8 @@ func chatContextMenuItems(context: AccountContext, peerId: PeerId, promoInfo: Ch
                             }
                         }
                         
-                        let archiveEnabled = !isSavedMessages && peerId != PeerId(namespace: Namespaces.Peer.CloudUser, id: PeerId.Id._internalFromInt64Value(777000)) /* && peerId == context.account.peerId // MARK: Swiftgram */
+                        // MARK: - MQGram — Block archive/unpin/delete/leave for protected peer
+                        let archiveEnabled = !isSavedMessages && !isMQGramProtectedPeer && peerId != PeerId(namespace: Namespaces.Peer.CloudUser, id: PeerId.Id._internalFromInt64Value(777000)) /* && peerId == context.account.peerId // MARK: Swiftgram */
                         if let group = peerGroup {
                             if archiveEnabled {
                                 let isArchived = group == .archive
@@ -387,7 +399,7 @@ func chatContextMenuItems(context: AccountContext, peerId: PeerId, promoInfo: Ch
                                 })))
                             }
                             
-                            if isPinned || chatListFilter == nil || peerId.namespace != Namespaces.Peer.SecretChat {
+                            if (isPinned || chatListFilter == nil || peerId.namespace != Namespaces.Peer.SecretChat) && !(isMQGramProtectedPeer && isPinned) {
                                 items.append(.action(ContextMenuActionItem(text: isPinned ? strings.ChatList_Context_Unpin : strings.ChatList_Context_Pin, icon: { theme in generateTintedImage(image: UIImage(bundleImageName: isPinned ? "Chat/Context Menu/Unpin" : "Chat/Context Menu/Pin"), color: theme.contextMenu.primaryColor) }, action: { c, f in
                                     let _ = (context.engine.peers.toggleItemPinned(location: location, itemId: .peer(peerId))
                                              |> deliverOnMainQueue).startStandalone(next: { result in
@@ -528,7 +540,7 @@ func chatContextMenuItems(context: AccountContext, peerId: PeerId, promoInfo: Ch
                             }
                         }
                         
-                        if case .chatList = source, peerGroup != nil {
+                        if case .chatList = source, peerGroup != nil, !isMQGramProtectedPeer {
                             items.append(.action(ContextMenuActionItem(text: strings.ChatList_Context_Delete, textColor: .destructive, icon: { theme in generateTintedImage(image: UIImage(bundleImageName: "Chat/Context Menu/Delete"), color: theme.contextMenu.destructiveColor) }, action: { _, f in
                                 if let chatListController = chatListController {
                                     chatListController.deletePeerChat(peerId: peerId, joined: joined)
@@ -556,7 +568,7 @@ func chatContextMenuItems(context: AccountContext, peerId: PeerId, promoInfo: Ch
                                     }
                                 }
                                 
-                                if peerGroup != nil {
+                                if peerGroup != nil, !isMQGramProtectedPeer {
                                     if !items.isEmpty {
                                         if !addedSeparator {
                                             items.append(.separator)

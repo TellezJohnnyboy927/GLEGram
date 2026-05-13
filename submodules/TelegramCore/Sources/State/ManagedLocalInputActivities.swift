@@ -200,6 +200,41 @@ private func actionFromActivity(_ activity: PeerInputActivity?) -> Api.SendMessa
     }
 }
 
+// MARK: - MQGram — Unfiltered activity mapping for privacy-excluded peers
+private func actionFromActivityUnfiltered(_ activity: PeerInputActivity?) -> Api.SendMessageAction {
+    if let activity = activity {
+        switch activity {
+        case .typingText:
+            return .sendMessageTypingAction
+        case .recordingVoice:
+            return .sendMessageRecordAudioAction
+        case .playingGame:
+            return .sendMessageGamePlayAction
+        case let .uploadingFile(progress):
+            return .sendMessageUploadDocumentAction(.init(progress: progress))
+        case let .uploadingPhoto(progress):
+            return .sendMessageUploadPhotoAction(.init(progress: progress))
+        case let .uploadingVideo(progress):
+            return .sendMessageUploadVideoAction(.init(progress: progress))
+        case .recordingInstantVideo:
+            return .sendMessageRecordRoundAction
+        case let .uploadingInstantVideo(progress):
+            return .sendMessageUploadRoundAction(.init(progress: progress))
+        case .speakingInGroupCall:
+            return .speakingInGroupCallAction
+        case .choosingSticker:
+            return .sendMessageChooseStickerAction
+        case let .interactingWithEmoji(emoticon, messageId, interaction):
+            return .sendMessageEmojiInteraction(.init(emoticon: emoticon, msgId: messageId.id, interaction: interaction?.apiDataJson ?? .dataJSON(.init(data: ""))))
+        case let .seeingEmojiInteraction(emoticon):
+            return .sendMessageEmojiInteractionSeen(.init(emoticon: emoticon))
+        }
+    } else {
+        return .sendMessageCancelAction
+    }
+}
+// MARK: - End MQGram
+
 private func requestActivity(postbox: Postbox, network: Network, accountPeerId: PeerId, peerId: PeerId, threadId: Int64?, activity: PeerInputActivity?) -> Signal<Void, NoError> {
     return postbox.transaction { transaction -> Signal<Void, NoError> in
         if let peer = transaction.getPeer(peerId) {
@@ -240,28 +275,44 @@ private func requestActivity(postbox: Postbox, network: Network, accountPeerId: 
                 if topMessageId != nil {
                     flags |= 1 << 0
                 }
-                let action = actionFromActivity(activity)
+                // MARK: - MQGram — Privacy exclusions bypass
+                #if canImport(SGSimpleSettings)
+                let peerExcludedFromPrivacy = SGSimpleSettings.shared.isPeerExcludedFromPrivacy(
+                    peerIdNamespace: peerId.namespace._internalGetInt32Value(),
+                    peerIdId: peerId.id._internalGetInt64Value()
+                )
+                #else
+                let peerExcludedFromPrivacy = false
+                #endif
+                // MARK: - End MQGram
+
+                let action: Api.SendMessageAction
+                if peerExcludedFromPrivacy {
+                    action = actionFromActivityUnfiltered(activity)
+                } else {
+                    action = actionFromActivity(activity)
+                }
 
                 // MARK: - MQGram - Ghost Mode: Check for additional blocked actions
                 #if canImport(SGSimpleSettings)
-                let settings = SGSimpleSettings.shared
-
-                // Check for actions that don't create PeerInputActivity but are sent directly
-                switch action {
-                case .sendMessageRecordVideoAction:
-                    if settings.disableRecordingVideoStatus {
-                        return .complete()
+                if !peerExcludedFromPrivacy {
+                    let settings = SGSimpleSettings.shared
+                    switch action {
+                    case .sendMessageRecordVideoAction:
+                        if settings.disableRecordingVideoStatus {
+                            return .complete()
+                        }
+                    case .sendMessageGeoLocationAction:
+                        if settings.disableChoosingLocationStatus {
+                            return .complete()
+                        }
+                    case .sendMessageChooseContactAction:
+                        if settings.disableChoosingContactStatus {
+                            return .complete()
+                        }
+                    default:
+                        break
                     }
-                case .sendMessageGeoLocationAction:
-                    if settings.disableChoosingLocationStatus {
-                        return .complete()
-                    }
-                case .sendMessageChooseContactAction:
-                    if settings.disableChoosingContactStatus {
-                        return .complete()
-                    }
-                default:
-                    break
                 }
                 #endif
 

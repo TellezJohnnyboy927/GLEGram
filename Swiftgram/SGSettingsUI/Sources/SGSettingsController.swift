@@ -135,6 +135,9 @@ enum SGBoolSetting: String {
     case disableEmojiInteractionStatus
     case disableEmojiAcknowledgementStatus
     case disableMessageReadReceipt
+    // MARK: - MQGram
+    case readAfterAction
+    // MARK: - End MQGram
     case disableStoryReadReceipt
     case disableAllAds
     case hideProxySponsor
@@ -668,6 +671,10 @@ public func sgSettingsController(context: AccountContext/*, focusOnItemTag: Int?
             SGSimpleSettings.shared.disableEmojiAcknowledgementStatus = value
         case .disableMessageReadReceipt:
             SGSimpleSettings.shared.disableMessageReadReceipt = value
+        // MARK: - MQGram
+        case .readAfterAction:
+            SGSimpleSettings.shared.readAfterAction = value
+        // MARK: - End MQGram
         case .disableStoryReadReceipt:
             SGSimpleSettings.shared.disableStoryReadReceipt = value
         case .disableAllAds:
