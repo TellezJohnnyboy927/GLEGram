@@ -2,6 +2,10 @@ import Foundation
 import Postbox
 import TelegramApi
 import SwiftSignalKit
+#if canImport(SGSimpleSettings)
+import SGSimpleSettings
+#endif
+import MtProtoKit
 
 
 private enum PeerReadStateMarker: Equatable {
@@ -249,7 +253,14 @@ private func pushPeerReadState(network: Network, postbox: Postbox, stateManager:
                 let (channelId, accessHash) = (inputPeerChannelData.channelId, inputPeerChannelData.accessHash)
                 switch readState {
                 case let .idBased(maxIncomingReadId, _, _, _, markedUnread):
-                    var pushSignal: Signal<Void, NoError> = network.request(Api.functions.channels.readHistory(channel: Api.InputChannel.inputChannel(.init(channelId: channelId, accessHash: accessHash)), maxId: maxIncomingReadId))
+                    // MARK: - MQGram - skip readHistory when user enabled "hide read receipts"
+                    #if canImport(SGSimpleSettings)
+                    let mqShouldBlockReadCh = SGSimpleSettings.shared.disableMessageReadReceipt
+                    #else
+                    let mqShouldBlockReadCh = false
+                    #endif
+                    let mqChReadCore: Signal<Api.Bool, MTRpcError> = mqShouldBlockReadCh ? .complete() : network.request(Api.functions.channels.readHistory(channel: Api.InputChannel.inputChannel(.init(channelId: channelId, accessHash: accessHash)), maxId: maxIncomingReadId))
+                    var pushSignal: Signal<Void, NoError> = mqChReadCore
                     |> `catch` { _ -> Signal<Api.Bool, NoError> in
                         return .complete()
                     }
@@ -279,7 +290,14 @@ private func pushPeerReadState(network: Network, postbox: Postbox, stateManager:
             default:
                 switch readState {
                 case let .idBased(maxIncomingReadId, _, _, _, markedUnread):
-                    var pushSignal: Signal<Void, NoError> = network.request(Api.functions.messages.readHistory(peer: inputPeer, maxId: maxIncomingReadId))
+                    // MARK: - MQGram - skip readHistory when user enabled "hide read receipts"
+                    #if canImport(SGSimpleSettings)
+                    let mqShouldBlockReadMs = SGSimpleSettings.shared.disableMessageReadReceipt
+                    #else
+                    let mqShouldBlockReadMs = false
+                    #endif
+                    let mqMsReadCore: Signal<Api.messages.AffectedMessages, MTRpcError> = mqShouldBlockReadMs ? .complete() : network.request(Api.functions.messages.readHistory(peer: inputPeer, maxId: maxIncomingReadId))
+                    var pushSignal: Signal<Void, NoError> = mqMsReadCore
                     |> map(Optional.init)
                     |> `catch` { _ -> Signal<Api.messages.AffectedMessages?, NoError> in
                         return .single(nil)

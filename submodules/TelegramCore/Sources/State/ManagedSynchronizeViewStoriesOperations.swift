@@ -3,6 +3,9 @@ import Postbox
 import SwiftSignalKit
 import TelegramApi
 import MtProtoKit
+#if canImport(SGSimpleSettings)
+import SGSimpleSettings
+#endif
 
 private final class ManagedSynchronizeViewStoriesOperationsHelper {
     var operationDisposables: [PeerId: (Int32, Disposable)] = [:]
@@ -122,6 +125,12 @@ private func pushStoriesAreSeen(postbox: Postbox, network: Network, stateManager
     guard let inputPeer = apiInputPeer(peer) else {
         return .complete()
     }
+    // MARK: - MQGram - block story read receipts when user enabled the toggle
+    #if canImport(SGSimpleSettings)
+    if SGSimpleSettings.shared.disableStoryReadReceipt {
+        return .complete()
+    }
+    #endif
     return network.request(Api.functions.stories.readStories(peer: inputPeer, maxId: operation.storyId))
     |> `catch` { _ -> Signal<[Int32], NoError> in
         return .single([])

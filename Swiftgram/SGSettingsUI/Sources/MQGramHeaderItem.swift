@@ -61,10 +61,18 @@ final class MQGramHeaderItemNode: ItemListControllerHeaderItemNode {
         self.backgroundNode.isLayerBacked = true
         self.iconNode = ASImageNode()
         self.iconNode.contentMode = .scaleAspectFit
-        self.iconNode.cornerRadius = iconCornerRadius
-        self.iconNode.clipsToBounds = true
+        self.iconNode.displaysAsynchronously = false
+        // MARK: - MQGram - pre-render rounded icon (ASImageNode cornerRadius doesn't play well with scaleAspectFit; bake the mask into the image)
         if let rawIcon = UIImage(bundleImageName: "MQGramSettings") {
-            self.iconNode.image = rawIcon
+            let target = CGSize(width: iconSize, height: iconSize)
+            let renderer = UIGraphicsImageRenderer(size: target)
+            let rounded = renderer.image { ctx in
+                let rect = CGRect(origin: .zero, size: target)
+                let path = UIBezierPath(roundedRect: rect, cornerRadius: iconCornerRadius)
+                path.addClip()
+                rawIcon.draw(in: rect)
+            }
+            self.iconNode.image = rounded
         }
         self.titleNode = ImmediateTextNode()
         self.titleNode.maximumNumberOfLines = 1

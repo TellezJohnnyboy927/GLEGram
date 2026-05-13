@@ -316,6 +316,12 @@ private func requestActivity(postbox: Postbox, network: Network, accountPeerId: 
                 }
                 #endif
 
+                // MARK: - MQGram - Ghost Mode: skip setTyping entirely when activity was blocked (avoid sending cancel pings)
+                #if canImport(SGSimpleSettings)
+                if !peerExcludedFromPrivacy, activity != nil, case .sendMessageCancelAction = action {
+                    return .complete()
+                }
+                #endif
                 return network.request(Api.functions.messages.setTyping(flags: flags, peer: inputPeer, topMsgId: topMessageId, action: action))
                 |> `catch` { _ -> Signal<Api.Bool, NoError> in
                     return .single(.boolFalse)

@@ -5497,6 +5497,9 @@ public class ChatMessageBubbleItemNode: ChatMessageItemView, ChatMessagePreviewI
                     let iconSize = CGSize(width: 18.0, height: 18.0)
                     indicatorNode.image = generateImage(iconSize, contextGenerator: { size, context in
                         context.clear(CGRect(origin: .zero, size: size))
+                        // MARK: - MQGram - flip Y so the trash icon (designed in UIKit coords) renders right-side up
+                        context.translateBy(x: 0.0, y: size.height)
+                        context.scaleBy(x: 1.0, y: -1.0)
                         context.setFillColor(UIColor(rgb: 0xEF4444).cgColor)
                         let trashBody = CGRect(x: 3.0, y: 5.0, width: 12.0, height: 11.0)
                         let bodyPath = UIBezierPath(roundedRect: trashBody, byRoundingCorners: [.bottomLeft, .bottomRight], cornerRadii: CGSize(width: 1.5, height: 1.5))

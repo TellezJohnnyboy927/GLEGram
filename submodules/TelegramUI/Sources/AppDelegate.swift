@@ -1121,29 +1121,10 @@ private func extractAccountManagerState(records: AccountRecordsView<TelegramAcco
                 icons.append(PresentationAppIcon(name: "PremiumBlack", imageName: "PremiumBlack", isPremium: true))
                 
                 
-                // MARK: Swiftgram
+                // MARK: MQGram - keep only default app icon (single user-supplied alternate handled separately)
                 icons = [
                     PresentationAppIcon(name: "SGDefault", imageName: "SGDefault", isDefault: true),
-                    PresentationAppIcon(name: "SGBlack", imageName: "SGBlack"),
-                    PresentationAppIcon(name: "SGLegacy", imageName: "SGLegacy"),
-                    PresentationAppIcon(name: "SGInverted", imageName: "SGInverted"),
-                    PresentationAppIcon(name: "SGWhite", imageName: "SGWhite"),
-                    PresentationAppIcon(name: "SGNight", imageName: "SGNight"),
-                    PresentationAppIcon(name: "SGSky", imageName: "SGSky"),
-                    PresentationAppIcon(name: "SGTitanium", imageName: "SGTitanium"),
-                    PresentationAppIcon(isSGPro: true, name: "SGPro", imageName: "SGPro"),
-                    PresentationAppIcon(isSGPro: true, name: "SGDay", imageName: "SGDay"),
-                    PresentationAppIcon(isSGPro: true, name: "SGGold", imageName: "SGGold"),
-                    SGSimpleSettings.shared.duckyAppIconAvailable ? PresentationAppIcon(isSGPro: true, name: "SGDucky", imageName: "SGDucky") : PresentationAppIcon(name: "", imageName: ""), // Empty
-                    PresentationAppIcon(name: "SGNeon", imageName: "SGNeon"),
-                    PresentationAppIcon(name: "SGNeonBlue", imageName: "SGNeonBlue"),
-                    PresentationAppIcon(name: "SGGlass", imageName: "SGGlass"),
-                    PresentationAppIcon(name: "SGSparkling", imageName: "SGSparkling"),
                 ]
-
-                if Bundle.main.appStoreReceiptURL?.lastPathComponent == "sandboxReceipt" {
-                    icons.append(PresentationAppIcon(name: "SGBeta", imageName: "SGBeta"))
-                }
                 
                 return icons
             } else {
