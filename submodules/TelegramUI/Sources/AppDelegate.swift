@@ -3842,23 +3842,25 @@ extension AppDelegate {
             })
         }
 
-        mqgramBtn.addAction(UIAction { _ in
-            dismiss()
-            if let url = URL(string: "https://t.me/MQGram") {
-                UIApplication.shared.open(url, options: [:], completionHandler: nil)
-            }
-        }, for: .touchUpInside)
+        if #available(iOS 14.0, *) {
+            mqgramBtn.addAction(UIAction { _ in
+                dismiss()
+                if let url = URL(string: "https://t.me/MQGram") {
+                    UIApplication.shared.open(url, options: [:], completionHandler: nil)
+                }
+            }, for: .touchUpInside)
 
-        vpnBtn.addAction(UIAction { _ in
-            dismiss()
-            if let url = URL(string: "https://t.me/stivenvpn") {
-                UIApplication.shared.open(url, options: [:], completionHandler: nil)
-            }
-        }, for: .touchUpInside)
+            vpnBtn.addAction(UIAction { _ in
+                dismiss()
+                if let url = URL(string: "https://t.me/stivenvpn") {
+                    UIApplication.shared.open(url, options: [:], completionHandler: nil)
+                }
+            }, for: .touchUpInside)
 
-        closeBtn.addAction(UIAction { _ in
-            dismiss()
-        }, for: .touchUpInside)
+            closeBtn.addAction(UIAction { _ in
+                dismiss()
+            }, for: .touchUpInside)
+        }
 
         rootController.view.addSubview(dimView)
         card.transform = CGAffineTransform(scaleX: 0.85, y: 0.85)
