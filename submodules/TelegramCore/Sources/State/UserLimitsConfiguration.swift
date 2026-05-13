@@ -1,5 +1,8 @@
 import Postbox
 import SwiftSignalKit
+#if canImport(SGSimpleSettings)
+import SGSimpleSettings
+#endif
 
 public struct UserLimitsConfiguration: Equatable {
     public var maxPinnedChatCount: Int32
@@ -152,6 +155,12 @@ extension UserLimitsConfiguration {
         self.maxPublicLinksCount = getValue("channels_public_limit", orElse: defaultValue.maxPublicLinksCount)
         self.maxSavedGifCount = getValue("saved_gifs_limit", orElse: defaultValue.maxSavedGifCount)
         self.maxFavedStickerCount = getValue("stickers_faved_limit", orElse: defaultValue.maxFavedStickerCount)
+        // MARK: - MQGram - bypass favorite stickers limit
+        #if canImport(SGSimpleSettings)
+        if SGSimpleSettings.shared.unlimitedFavoriteStickers {
+            self.maxFavedStickerCount = 100000
+        }
+        #endif
         self.maxFoldersCount = getValue("dialog_filters_limit", orElse: defaultValue.maxFoldersCount)
         self.maxFolderChatsCount = getValue("dialog_filters_chats_limit", orElse: defaultValue.maxFolderChatsCount)
         self.maxCaptionLength = getValue("caption_length_limit", orElse: defaultValue.maxCaptionLength)
