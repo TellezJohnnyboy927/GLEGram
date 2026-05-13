@@ -429,6 +429,11 @@ private func mqGramEntries(presentationData: PresentationData, contentSettingsCo
     entries.append(.toggle(id: id.count, section: .content, settingName: .enableSavingSelfDestructingMessages, value: SGSimpleSettings.shared.enableSavingSelfDestructingMessages, text: antiSelfDestructTitle, enabled: true))
     entries.append(.notice(id: id.count, section: .content, text: antiSelfDestructNotice))
 
+    let antiAutoDeleteTitle = (lang == "ru" ? "Сохранять сообщения с авто-удалением" : "Save Auto-Delete Messages")
+    let antiAutoDeleteNotice = (lang == "ru" ? "В чатах с автоудалением (1 день, 7 дней и т.п.) сообщения не будут стираться после истечения таймера." : "Prevents messages in chats with auto-delete (1 day, 7 days, etc.) from being removed when the timer expires.")
+    entries.append(.toggle(id: id.count, section: .content, settingName: .disableAutoDeleteMessages, value: SGSimpleSettings.shared.disableAutoDeleteMessages, text: antiAutoDeleteTitle, enabled: true))
+    entries.append(.notice(id: id.count, section: .content, text: antiAutoDeleteNotice))
+
     let antiScreenshotTitle = (lang == "ru" ? "Скриншоты без уведомлений" : "Disable screenshot notifications")
     let antiScreenshotNotice = (lang == "ru" ? "Делайте скриншоты в секретных чатах и защищённых каналах без уведомления собеседника." : "Take screenshots in secret chats and protected channels without alerting the other side.")
     entries.append(.toggle(id: id.count, section: .content, settingName: .disableScreenshotDetection, value: SGSimpleSettings.shared.disableScreenshotDetection, text: antiScreenshotTitle, enabled: true))
@@ -445,6 +450,15 @@ private func mqGramEntries(presentationData: PresentationData, contentSettingsCo
     entries.append(.notice(id: id.count, section: .content, text: saveProtectedNotice))
 
     _ = contentSettingsConfiguration // sensitive-content toggle moved out of Privacy tab
+
+    // MARK: MISC (Fix File Picker)
+    entries.append(.header(id: id.count, section: .content, text: (lang == "ru" ? "ПРОЧЕЕ" : "MISC"), badge: nil))
+    let fixFilePickerTitle = (lang == "ru" ? "Починить выбор файлов" : "Fix File Picker")
+    let fixFilePickerNotice = (lang == "ru" ? "Исправляет проблему, когда невозможно выбрать файлы из приложения «Файлы» на sideloaded-сборках. Переключает режим выбора с .open на .import (копирует файл в песочницу приложения)." : "Fixes the issue where you can't pick files from the Files app on sideloaded versions. Switches the picker mode from .open to .import (copies the file into the app sandbox).")
+    entries.append(.toggle(id: id.count, section: .content, settingName: .enableFileMimeFix, value: SGSimpleSettings.shared.enableFileMimeFix, text: fixFilePickerTitle, enabled: true))
+    entries.append(.notice(id: id.count, section: .content, text: fixFilePickerNotice))
+    let clearFilePickerCacheTitle = (lang == "ru" ? "Очистить кэш выбора файлов" : "Clear File Picker Cache")
+    entries.append(.action(id: id.count, section: .content, actionType: "clearFilePickerCache" as AnyHashable, text: clearFilePickerCacheTitle, kind: .destructive))
 
     // MARK: Local premium
     entries.append(.header(id: id.count, section: .localPremium, text: i18n("Settings.Other.LocalPremium", lang), badge: nil))
@@ -1188,6 +1202,45 @@ public func mqGramSettingsController(context: AccountContext) -> ViewController 
                         presentControllerImpl?(OverlayStatusController(theme: presentationData.theme, type: .success), nil)
                     })
             }
+
+            // MARK: - MQGram — Clear File Picker Cache
+            if actionString == "clearFilePickerCache" {
+                let presentationData = context.sharedContext.currentPresentationData.with { $0 }
+                let confirmTitle = (presentationData.strings.baseLanguageCode == "ru" ? "Очистить кэш" : "Clear cache")
+                let confirmText = (presentationData.strings.baseLanguageCode == "ru" ? "Удалить кэш файлового пикера? Это удалит все временные импортированные файлы." : "Clear the file picker cache? This removes all temporary imported files.")
+                let alertController = textAlertController(
+                    context: context,
+                    title: confirmTitle,
+                    text: confirmText,
+                    actions: [
+                        TextAlertAction(type: .destructiveAction, title: presentationData.strings.Common_OK, action: {
+                            DispatchQueue.global(qos: .background).async {
+                                let fm = FileManager.default
+                                let tmpDir = NSTemporaryDirectory()
+                                if let contents = try? fm.contentsOfDirectory(atPath: tmpDir) {
+                                    for name in contents where name.lowercased().contains("filepicker") || name.lowercased().contains("documentpicker") || name.lowercased().contains("com.apple.uikit.shortcuts") {
+                                        try? fm.removeItem(atPath: (tmpDir as NSString).appendingPathComponent(name))
+                                    }
+                                }
+                                if let cachesURL = fm.urls(for: .cachesDirectory, in: .userDomainMask).first {
+                                    let candidates = ["com.apple.UIKit.shortcuts", "DocumentPicker", "FilePicker"]
+                                    for name in candidates {
+                                        let url = cachesURL.appendingPathComponent(name)
+                                        try? fm.removeItem(at: url)
+                                    }
+                                }
+                                DispatchQueue.main.async {
+                                    let presentationData = context.sharedContext.currentPresentationData.with { $0 }
+                                    presentControllerImpl?(OverlayStatusController(theme: presentationData.theme, type: .success), nil)
+                                }
+                            }
+                        }),
+                        TextAlertAction(type: .genericAction, title: presentationData.strings.Common_Cancel, action: {})
+                    ]
+                )
+                presentControllerImpl?(alertController, nil)
+            }
+            // MARK: - End MQGram
 
             if actionString == "markAllReadServer" {
                 let presentationData = context.sharedContext.currentPresentationData.with { $0 }

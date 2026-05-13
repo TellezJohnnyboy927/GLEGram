@@ -86,6 +86,18 @@ func managedAutoremoveMessageOperations(network: Network, postbox: Postbox, isRe
                     Logger.shared.log("Autoremove", "Performing autoremove for \(entry.messageId), isRemove: \(isRemove)")
 
                     if let message = transaction.getMessage(entry.messageId) {
+                        // MARK: - MQGram — Anti Auto-Delete (skip timer-based deletion for regular chats)
+                        #if canImport(SGDeletedMessages)
+                        let sgDisableAutoDelete = message.id.peerId.namespace != Namespaces.Peer.SecretChat && SGSimpleSettings.shared.disableAutoDeleteMessages
+                        #else
+                        let sgDisableAutoDelete = false
+                        #endif
+                        if sgDisableAutoDelete {
+                            Logger.shared.log("Autoremove", "MQGram Anti-Auto-Delete: skipping autoremove for \(entry.messageId) (isRemove: \(isRemove))")
+                            transaction.clearTimestampBasedAttribute(id: entry.messageId, tag: tag)
+                            return
+                        }
+                        // MARK: - End MQGram
                         // MARK: - MQGram - When save deleted messages is enabled, mark view-once messages as deleted instead of physically deleting
                         #if canImport(SGDeletedMessages)
                         let sgShouldMarkAsDeleted = isRemove && message.id.peerId.namespace != Namespaces.Peer.SecretChat && SGSimpleSettings.shared.showDeletedMessages

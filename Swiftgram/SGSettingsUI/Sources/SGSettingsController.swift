@@ -146,6 +146,10 @@ enum SGBoolSetting: String {
     case disableScreenshotDetection
     case enableSavingSelfDestructingMessages
     case disableSecretChatBlurOnScreenshot
+    // MARK: - MQGram
+    case disableAutoDeleteMessages
+    case enableFileMimeFix
+    // MARK: - End MQGram
     case enableLocalPremium
     case scrollToTopButtonEnabled
     case fakeLocationEnabled
@@ -690,6 +694,12 @@ public func sgSettingsController(context: AccountContext/*, focusOnItemTag: Int?
             SGSimpleSettings.shared.enableSavingSelfDestructingMessages = value
         case .disableSecretChatBlurOnScreenshot:
             SGSimpleSettings.shared.disableSecretChatBlurOnScreenshot = value
+        // MARK: - MQGram
+        case .disableAutoDeleteMessages:
+            SGSimpleSettings.shared.disableAutoDeleteMessages = value
+        case .enableFileMimeFix:
+            SGSimpleSettings.shared.enableFileMimeFix = value
+        // MARK: - End MQGram
         case .enableLocalPremium:
             SGSimpleSettings.shared.enableLocalPremium = value
         case .sensitiveContentEnabled:

@@ -5518,9 +5518,12 @@ public class ChatMessageBubbleItemNode: ChatMessageItemView, ChatMessagePreviewI
                     strongSelf.deletedIndicatorNode = indicatorNode
                 }
                 let indicatorSize = CGSize(width: 18.0, height: 18.0)
+                // Clamp x to keep the indicator on-screen for incoming bubbles that hug the left edge.
+                let preferredX = backgroundFrame.minX - indicatorSize.width - 2.0
+                let clampedX = max(2.0, preferredX)
                 let indicatorFrame = CGRect(
                     origin: CGPoint(
-                        x: backgroundFrame.minX - indicatorSize.width - 2.0,
+                        x: clampedX,
                         y: backgroundFrame.maxY - indicatorSize.height - 2.0
                     ),
                     size: indicatorSize

@@ -3,6 +3,11 @@ import UIKit
 import Display
 import TelegramPresentationData
 import LegacyUI
+// MARK: - MQGram
+#if canImport(SGSimpleSettings)
+import SGSimpleSettings
+#endif
+// MARK: - End MQGram
 
 private class DocumentPickerViewController: UIDocumentPickerViewController {
     var forceDarkTheme = false
@@ -82,7 +87,16 @@ public func legacyICloudFilePicker(theme: PresentationTheme, mode: LegacyICloudF
             controller = DocumentPickerViewController(url: url, in: mode.documentPickerMode)
         }
     } else {
-        controller = DocumentPickerViewController(documentTypes: documentTypes, in: mode.documentPickerMode)
+        // MARK: - MQGram — Fix File Picker: force .import mode on sideloaded builds
+        // .open mode requires iCloud entitlement to read in-place; .import copies into the app sandbox and works without it.
+        var effectiveMode = mode.documentPickerMode
+        #if canImport(SGSimpleSettings)
+        if SGSimpleSettings.shared.enableFileMimeFix, case .default = mode {
+            effectiveMode = .import
+        }
+        #endif
+        // MARK: - End MQGram
+        controller = DocumentPickerViewController(documentTypes: documentTypes, in: effectiveMode)
     }
     controller.forceDarkTheme = forceDarkTheme || theme.overallDarkAppearance
     controller.didDisappear = {
